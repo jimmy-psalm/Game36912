@@ -85,17 +85,17 @@ public class AIPlayer {
 
         // Check horizontal - count ANY occupied cells
         int hCount = countConsecutiveOccupied(row, col, true);
-        if (hCount == 12) score += 12;
-        else if (hCount == 9) score += 9;
-        else if (hCount == 6) score += 6;
-        else if (hCount == 3) score += 3;
+        if (hCount >= 12) score += 12;
+        else if (hCount >= 9) score += 9;
+        else if (hCount >= 6) score += 6;
+        else if (hCount >= 3) score += 3;
 
         // Check vertical - count ANY occupied cells
         int vCount = countConsecutiveOccupied(row, col, false);
-        if (vCount == 12) score += 12;
-        else if (vCount == 9) score += 9;
-        else if (vCount == 6) score += 6;
-        else if (vCount == 3) score += 3;
+        if (vCount >= 12) score += 12;
+        else if (vCount >= 9) score += 9;
+        else if (vCount >= 6) score += 6;
+        else if (vCount >= 3) score += 3;
 
         // Remove the temporary piece
         removePiece(row, col);
@@ -114,17 +114,17 @@ public class AIPlayer {
 
         // Check horizontal
         int hCount = countConsecutiveOccupied(row, col, true);
-        if (hCount == 12) score += 12;
-        else if (hCount == 9) score += 9;
-        else if (hCount == 6) score += 6;
-        else if (hCount == 3) score += 3;
+        if (hCount >= 12) score += 12;
+        else if (hCount >= 9) score += 9;
+        else if (hCount >= 6) score += 6;
+        else if (hCount >= 3) score += 3;
 
         // Check vertical
         int vCount = countConsecutiveOccupied(row, col, false);
-        if (vCount == 12) score += 12;
-        else if (vCount == 9) score += 9;
-        else if (vCount == 6) score += 6;
-        else if (vCount == 3) score += 3;
+        if (vCount >= 12) score += 12;
+        else if (vCount >= 9) score += 9;
+        else if (vCount >= 6) score += 6;
+        else if (vCount >= 3) score += 3;
 
         // Remove the temporary piece
         removePiece(row, col);
