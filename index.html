@@ -502,46 +502,69 @@ function evaluateBlockPotential(row, col) {
 function evaluateDangerPotential(row, col) {
     // Temporarily place AI at (row,col)
     grid[row][col] = AI;
-    // Simulate the human's best chain of scoring moves
-    // (human scores → gets extra turn → scores again → ...)
-    const totalScore = simulateHumanChain();
+    // Simulate the human's best chain of scoring moves.
+    // Only check cells in the same row or column as the AI's placement,
+    // because the AI's piece can only create scoring opportunities there.
+    const totalScore = simulateHumanChain(row, col);
     grid[row][col] = EMPTY;
     return totalScore;
 }
 
-// Recursively simulate human's chain scoring:
-// Find the best scoring move for human, simulate it,
-// and continue if human gets extra turns.
+// Recursively simulate human's chain scoring.
+// (pr, pc) = the row and column of the last placed piece.
+// Only checks cells in the same row or column as (pr, pc),
+// because a piece can only create scoring opportunities in its own row/column.
 // depth parameter prevents infinite recursion.
-function simulateHumanChain(depth) {
+function simulateHumanChain(pr, pc, depth) {
     if (depth === undefined) depth = 0;
-    if (depth >= 6) return 0; // Limit recursion depth to prevent slowdown
+    if (depth >= 6) return 0; // Limit recursion depth
 
     let bestScore = 0;
     let bestR = -1, bestC = -1;
 
-    // Find all cells where human can score
+    // Check all cells in the same ROW as the last placed piece
+    for (let c = 0; c < SIZE; c++) {
+        if (grid[pr][c] !== EMPTY) continue;
+        grid[pr][c] = HUMAN;
+        const hCount = countConsecutiveOccupied(pr, c, true);
+        const vCount = countConsecutiveOccupied(pr, c, false);
+        let score = 0;
+        if (hCount === 12) score = 12;
+        else if (hCount === 9) score = 9;
+        else if (hCount === 6) score = 6;
+        else if (hCount === 3) score = 3;
+        if (vCount === 12) score = Math.max(score, 12);
+        else if (vCount === 9) score = Math.max(score, 9);
+        else if (vCount === 6) score = Math.max(score, 6);
+        else if (vCount === 3) score = Math.max(score, 3);
+        grid[pr][c] = EMPTY;
+        if (score > bestScore) {
+            bestScore = score;
+            bestR = pr;
+            bestC = c;
+        }
+    }
+
+    // Check all cells in the same COLUMN as the last placed piece
     for (let r = 0; r < SIZE; r++) {
-        for (let c = 0; c < SIZE; c++) {
-            if (grid[r][c] !== EMPTY) continue;
-            grid[r][c] = HUMAN;
-            const hCount = countConsecutiveOccupied(r, c, true);
-            const vCount = countConsecutiveOccupied(r, c, false);
-            let score = 0;
-            if (hCount === 12) score = 12;
-            else if (hCount === 9) score = 9;
-            else if (hCount === 6) score = 6;
-            else if (hCount === 3) score = 3;
-            if (vCount === 12) score = Math.max(score, 12);
-            else if (vCount === 9) score = Math.max(score, 9);
-            else if (vCount === 6) score = Math.max(score, 6);
-            else if (vCount === 3) score = Math.max(score, 3);
-            grid[r][c] = EMPTY;
-            if (score > bestScore) {
-                bestScore = score;
-                bestR = r;
-                bestC = c;
-            }
+        if (grid[r][pc] !== EMPTY) continue;
+        grid[r][pc] = HUMAN;
+        const hCount = countConsecutiveOccupied(r, pc, true);
+        const vCount = countConsecutiveOccupied(r, pc, false);
+        let score = 0;
+        if (hCount === 12) score = 12;
+        else if (hCount === 9) score = 9;
+        else if (hCount === 6) score = 6;
+        else if (hCount === 3) score = 3;
+        if (vCount === 12) score = Math.max(score, 12);
+        else if (vCount === 9) score = Math.max(score, 9);
+        else if (vCount === 6) score = Math.max(score, 6);
+        else if (vCount === 3) score = Math.max(score, 3);
+        grid[r][pc] = EMPTY;
+        if (score > bestScore) {
+            bestScore = score;
+            bestR = r;
+            bestC = pc;
         }
     }
 
@@ -550,11 +573,12 @@ function simulateHumanChain(depth) {
     // Simulate human placing at the best scoring cell
     grid[bestR][bestC] = HUMAN;
     // Human gets extra turn, so recursively check for more scoring
-    const chainScore = simulateHumanChain(depth + 1);
+    const chainScore = simulateHumanChain(bestR, bestC, depth + 1);
     grid[bestR][bestC] = EMPTY;
 
     return bestScore + chainScore;
 }
+
 
 
 
