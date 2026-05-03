@@ -325,6 +325,14 @@ function processMove(row, col, player) {
     return result;
 }
 
+// ---- DEBUG: log processMove results ----
+const _origProcessMove = processMove;
+processMove = function(row, col, player) {
+    const result = _origProcessMove(row, col, player);
+    console.log('DEBUG processMove:', row, col, player === HUMAN ? 'HUMAN' : 'AI', 'scored=', result.scored, 'score=', result.score, 'valid=', result.valid);
+    return result;
+};
+
 // ---- AI (UPDATED: use >= instead of === for proper evaluation) ----
 function getAllEmptyCells() {
     const empty = [];
