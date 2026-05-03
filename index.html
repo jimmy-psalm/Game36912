@@ -21,7 +21,8 @@ body {
     padding: 16px 24px 20px;
     box-shadow: 0 8px 32px rgba(0,0,0,0.15);
     text-align: center;
-    max-width: 700px;
+    max-width: 900px;
+
 }
 h1 {
     font-size: 22px;
@@ -107,7 +108,46 @@ canvas {
     color: #6a5040;
     margin-top: 6px;
 }
+.history-panel {
+    margin-top: 10px;
+    text-align: left;
+    max-height: 160px;
+    overflow-y: auto;
+    background: #f5ede0;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 12px;
+    font-family: 'Consolas', 'Courier New', monospace;
+    line-height: 1.6;
+    border: 1px solid #d8c8b0;
+}
+.history-panel .hist-title {
+    font-weight: bold;
+    color: #3d2b1a;
+    margin-bottom: 4px;
+    font-family: 'Microsoft YaHei', Arial, sans-serif;
+}
+.history-panel .hist-entry {
+    color: #5a4030;
+}
+.history-panel .hist-entry.human { color: #2a5db0; }
+.history-panel .hist-entry.ai { color: #c07020; }
+.stop-btn {
+    font-size: 13px;
+    font-weight: bold;
+    padding: 5px 16px;
+    border: none;
+    border-radius: 8px;
+    background: #d05050;
+    color: white;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.stop-btn:hover { background: #c04040; }
+.stop-btn:active { background: #b03030; }
+.stop-btn:disabled { background: #c0b0a0; cursor: default; }
 </style>
+
 </head>
 <body>
 <div class="game-container">
@@ -130,9 +170,15 @@ canvas {
     </div>
     <div class="info-panel">
         <button class="reset-btn" id="resetBtn">重置游戏</button>
+        <button class="stop-btn" id="stopBtn" disabled>停止游戏</button>
     </div>
     <div class="turn-indicator" id="turnIndicator">● 轮到人类</div>
+    <div class="history-panel" id="historyPanel">
+        <div class="hist-title">📜 移动记录</div>
+        <div id="historyContent"><em style="color:#a09080;">暂无记录</em></div>
+    </div>
 </div>
+
 <script>
 // ============================================================
 //  3-6-9-12 连线棋 (人机对战版) — HTML5 Canvas
@@ -167,6 +213,59 @@ let currentPlayer = HUMAN;
 let gameOver = false;
 let extraTurn = false;
 let aiThinking = false;
+
+// ---- Move history ----
+let moveHistory = [];
+let moveNumber = 0;
+let gameStopped = false;
+const historyContent = document.getElementById('historyContent');
+const stopBtn = document.getElementById('stopBtn');
+
+function recordMove(row, col, player) {
+    moveNumber++;
+    const playerChar = player === HUMAN ? 'h' : 'a';
+    const entry = padNumber(moveNumber, 3) + playerChar + '(' + row + ',' + col + ')';
+    moveHistory.push(entry);
+    updateHistoryDisplay();
+}
+
+function padNumber(num, len) {
+    return String(num).padStart(len, '0');
+}
+
+function updateHistoryDisplay() {
+    if (moveHistory.length === 0) {
+        historyContent.innerHTML = '<em style="color:#a09080;">暂无记录</em>';
+        return;
+    }
+    let html = '';
+    for (let i = 0; i < moveHistory.length; i++) {
+        const entry = moveHistory[i];
+        const isHuman = entry.includes('h(');
+        const cls = isHuman ? 'human' : 'ai';
+        html += '<div class="hist-entry ' + cls + '">#' + entry + '</div>';
+    }
+    historyContent.innerHTML = html;
+    // Auto-scroll to bottom
+    const panel = document.getElementById('historyPanel');
+    panel.scrollTop = panel.scrollHeight;
+}
+
+function stopGame() {
+    gameStopped = true;
+    gameOver = true;
+    aiThinking = false;
+    stopBtn.disabled = true;
+    setStatus('⏹ 游戏已停止！移动记录已保存');
+    updateTurnIndicator();
+    // Show the move history in console for easy copy
+    console.log('=== 移动记录 ===');
+    console.log(moveHistory.join(', '));
+    console.log('人类得分:', humanScore, 'AI得分:', aiScore);
+}
+
+stopBtn.addEventListener('click', stopGame);
+
 
 // ---- Board functions ----
 function initGrid() {
@@ -562,6 +661,7 @@ function handleHumanMove(row, col) {
     const result = processMove(row, col, HUMAN);
     if (!result.valid) return;
 
+    recordMove(row, col, HUMAN);
     updateUI();
 
     if (result.gameEnded) {
@@ -579,6 +679,7 @@ function handleHumanMove(row, col) {
         startAIMove();
     }
 }
+
 
 function startAIMove() {
     aiThinking = true;
@@ -602,7 +703,9 @@ function doAIMove() {
     const row = move[0], col = move[1];
     const result = processMove(row, col, AI);
 
+    recordMove(row, col, AI);
     updateUI();
+
 
     if (result.gameEnded) {
         showGameOver();
@@ -647,10 +750,16 @@ function resetGame() {
     currentPlayer = HUMAN;
     gameOver = false;
     extraTurn = false;
+    gameStopped = false;
+    moveHistory = [];
+    moveNumber = 0;
+    stopBtn.disabled = false;
+    updateHistoryDisplay();
     updateUI();
     setStatus('人类先手 (蓝色) — 请点击棋盘下子');
     updateTurnIndicator();
 }
+
 
 // ---- Canvas click handler ----
 canvas.addEventListener('click', (e) => {
