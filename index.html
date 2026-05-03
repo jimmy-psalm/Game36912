@@ -104,13 +104,14 @@ canvas {
 }
 .reset-btn:hover { background: #b8a488; }
 .reset-btn:active { background: #a89478; }
-.stop-btn {
-    background: #d05050;
+.copy-btn {
+    background: #5a8ab5;
     color: white;
 }
-.stop-btn:hover { background: #c04040; }
-.stop-btn:active { background: #b03030; }
-.stop-btn:disabled { background: #c0b0a0; cursor: default; }
+.copy-btn:hover { background: #4a7aa5; }
+.copy-btn:active { background: #3a6a95; }
+.copy-btn:disabled { background: #c0b0a0; cursor: default; }
+
 .zoom-btn {
     background: #b8a888;
     color: #3d2b1a;
@@ -174,7 +175,8 @@ canvas {
     <div class="info-panel">
         <button class="zoom-btn" id="zoomOutBtn">−</button>
         <button class="reset-btn" id="resetBtn">重置</button>
-        <button class="stop-btn" id="stopBtn" disabled>停止</button>
+        <button class="copy-btn" id="copyBtn">📋 複製記錄</button>
+
         <button class="zoom-btn" id="zoomInBtn">+</button>
     </div>
     <div class="turn-indicator" id="turnIndicator">● 轮到人类</div>
@@ -204,7 +206,8 @@ const statusBar = document.getElementById('statusBar');
 const humanScoreSpan = document.getElementById('humanScore');
 const aiScoreSpan = document.getElementById('aiScore');
 const turnIndicator = document.getElementById('turnIndicator');
-const stopBtn = document.getElementById('stopBtn');
+const copyBtn = document.getElementById('copyBtn');
+
 
 // ---- Game state ----
 let grid = [];
@@ -232,19 +235,34 @@ function padNumber(num, len) {
     return String(num).padStart(len, '0');
 }
 
-function stopGame() {
-    gameStopped = true;
-    gameOver = true;
-    aiThinking = false;
-    stopBtn.disabled = true;
-    setStatus('⏹ 游戏已停止！移动记录已保存');
-    updateTurnIndicator();
-    console.log('=== 移动记录 ===');
-    console.log(moveHistory.join(', '));
-    console.log('人类得分:', humanScore, 'AI得分:', aiScore);
+function copyHistory() {
+    if (moveHistory.length === 0) {
+        setStatus('⚠️ 暂无移动记录');
+        return;
+    }
+    const text = moveHistory.join(', ');
+    navigator.clipboard.writeText(text).then(() => {
+        setStatus('✅ 已复制 ' + moveHistory.length + ' 步移动记录到剪贴板');
+        console.log('=== 移动记录 ===');
+        console.log(text);
+        console.log('人类得分:', humanScore, 'AI得分:', aiScore);
+    }).catch(() => {
+        // Fallback for older browsers
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        setStatus('✅ 已复制 ' + moveHistory.length + ' 步移动记录到剪贴板');
+        console.log('=== 移动记录 ===');
+        console.log(text);
+        console.log('人类得分:', humanScore, 'AI得分:', aiScore);
+    });
 }
 
-stopBtn.addEventListener('click', stopGame);
+copyBtn.addEventListener('click', copyHistory);
+
 
 // ---- Zoom controls ----
 function resizeBoard(factor) {
@@ -736,7 +754,8 @@ function resetGame() {
     gameStopped = false;
     moveHistory = [];
     moveNumber = 0;
-    stopBtn.disabled = false;
+    copyBtn.disabled = false;
+
     updateUI();
     setStatus('人类先手 (绿色) — 请点击棋盘下子');
     updateTurnIndicator();
