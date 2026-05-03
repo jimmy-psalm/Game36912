@@ -268,14 +268,14 @@ function checkAllLines(row, col) {
     const results = [];
     const hCount = countConsecutiveOccupied(row, col, true);
     for (const len of VALID_LENGTHS) {
-        if (hCount >= len) {
+        if (hCount === len) {
             const startCol = findHorizontalStart(row, col);
             results.push({ startRow: row, startCol, endRow: row, endCol: startCol + len - 1, horizontal: true, length: len, score: len });
         }
     }
     const vCount = countConsecutiveOccupied(row, col, false);
     for (const len of VALID_LENGTHS) {
-        if (vCount >= len) {
+        if (vCount === len) {
             const startRow = findVerticalStart(row, col);
             results.push({ startRow, startCol: col, endRow: startRow + len - 1, endCol: col, horizontal: false, length: len, score: len });
         }
@@ -325,15 +325,7 @@ function processMove(row, col, player) {
     return result;
 }
 
-// ---- DEBUG: log processMove results ----
-const _origProcessMove = processMove;
-processMove = function(row, col, player) {
-    const result = _origProcessMove(row, col, player);
-    console.log('DEBUG processMove:', row, col, player === HUMAN ? 'HUMAN' : 'AI', 'scored=', result.scored, 'score=', result.score, 'valid=', result.valid);
-    return result;
-};
-
-// ---- AI (UPDATED: use >= instead of === for proper evaluation) ----
+// ---- AI ----
 function getAllEmptyCells() {
     const empty = [];
     for (let r = 0; r < SIZE; r++) {
@@ -345,73 +337,74 @@ function getAllEmptyCells() {
 }
 
 /**
- * Evaluate if AI placing here would create a scoring line.
- * Uses >= to correctly count any run of occupied cells.
+ * Evaluate if AI placing here would create a scoring line (exactly 3/6/9/12).
  */
 function evaluateScorePotential(row, col) {
     grid[row][col] = AI;
 
     let score = 0;
     const hCount = countConsecutiveOccupied(row, col, true);
-    if (hCount >= 12) score += 12;
-    else if (hCount >= 9) score += 9;
-    else if (hCount >= 6) score += 6;
-    else if (hCount >= 3) score += 3;
+    if (hCount === 12) score += 12;
+    else if (hCount === 9) score += 9;
+    else if (hCount === 6) score += 6;
+    else if (hCount === 3) score += 3;
 
     const vCount = countConsecutiveOccupied(row, col, false);
-    if (vCount >= 12) score += 12;
-    else if (vCount >= 9) score += 9;
-    else if (vCount >= 6) score += 6;
-    else if (vCount >= 3) score += 3;
+    if (vCount === 12) score += 12;
+    else if (vCount === 9) score += 9;
+    else if (vCount === 6) score += 6;
+    else if (vCount === 3) score += 3;
 
     grid[row][col] = EMPTY;
     return score;
 }
 
 /**
- * Evaluate if opponent could score by placing here (blocking potential).
+ * Evaluate if opponent could score by placing here (exactly 3/6/9/12).
  */
 function evaluateBlockPotential(row, col) {
     grid[row][col] = HUMAN;
 
     let score = 0;
     const hCount = countConsecutiveOccupied(row, col, true);
-    if (hCount >= 12) score += 12;
-    else if (hCount >= 9) score += 9;
-    else if (hCount >= 6) score += 6;
-    else if (hCount >= 3) score += 3;
+    if (hCount === 12) score += 12;
+    else if (hCount === 9) score += 9;
+    else if (hCount === 6) score += 6;
+    else if (hCount === 3) score += 3;
 
     const vCount = countConsecutiveOccupied(row, col, false);
-    if (vCount >= 12) score += 12;
-    else if (vCount >= 9) score += 9;
-    else if (vCount >= 6) score += 6;
-    else if (vCount >= 3) score += 3;
+    if (vCount === 12) score += 12;
+    else if (vCount === 9) score += 9;
+    else if (vCount === 6) score += 6;
+    else if (vCount === 3) score += 3;
 
     grid[row][col] = EMPTY;
     return score;
 }
 
 /**
- * Evaluate if placing here extends an existing occupied line.
+ * Evaluate if placing here creates a DANGEROUS line (2/5/8/11) that gives
+ * the opponent a chance to score on their next move.
+ * Penalty: higher penalty for more dangerous lengths.
  */
-function evaluateExtensionPotential(row, col) {
+function evaluateDangerPotential(row, col) {
     grid[row][col] = AI;
 
-    let score = 0;
+    let penalty = 0;
     const hCount = countConsecutiveOccupied(row, col, true);
-    if (hCount >= 2 && hCount < 3) score += 1;
-    else if (hCount >= 3 && hCount < 6) score += 2;
-    else if (hCount >= 6 && hCount < 9) score += 3;
-    else if (hCount >= 9 && hCount < 12) score += 4;
+    if (hCount === 2) penalty += 3;
+    else if (hCount === 5) penalty += 6;
+    else if (hCount === 8) penalty += 9;
+    else if (hCount === 11) penalty += 12;
 
     const vCount = countConsecutiveOccupied(row, col, false);
-    if (vCount >= 2 && vCount < 3) score += 1;
-    else if (vCount >= 3 && vCount < 6) score += 2;
-    else if (vCount >= 6 && vCount < 9) score += 3;
-    else if (vCount >= 9 && vCount < 12) score += 4;
+    if (vCount === 2) penalty += 3;
+    else if (vCount === 5) penalty += 6;
+    else if (vCount === 8) penalty += 9;
+    else if (vCount === 11) penalty += 12;
 
     grid[row][col] = EMPTY;
-    return score;
+    return penalty;
 }
 
 function getBestAIMove() {
@@ -425,12 +418,15 @@ function getBestAIMove() {
         const row = cell[0], col = cell[1];
         let score = 0;
 
+        // High priority: scoring potential
         score += evaluateScorePotential(row, col) * 100;
+        // Medium priority: blocking opponent's scoring potential
         score += evaluateBlockPotential(row, col) * 50;
-        score += evaluateExtensionPotential(row, col) * 25;
-
+        // Low priority: center preference
         const centerDist = Math.abs(row - SIZE / 2) + Math.abs(col - SIZE / 2);
         score += (SIZE - centerDist);
+        // Heavy penalty: creating 2/5/8/11 (gives opponent a chance)
+        score -= evaluateDangerPotential(row, col) * 200;
 
         if (score > bestScore) {
             bestScore = score;
