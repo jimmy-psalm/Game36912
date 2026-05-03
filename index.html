@@ -502,65 +502,61 @@ function evaluateBlockPotential(row, col) {
 function evaluateDangerPotential(row, col) {
     // Temporarily place AI at (row,col)
     grid[row][col] = AI;
-    let maxHumanScore = 0;
-    // Only check cells that are adjacent (within 1 cell) to the AI's placement
-    // because those are the cells where the AI's move could CREATE a new scoring opportunity
-    for (let dr = -1; dr <= 1; dr++) {
-        for (let dc = -1; dc <= 1; dc++) {
-            if (dr === 0 && dc === 0) continue;
-            const r = row + dr;
-            const c = col + dc;
-            if (r < 0 || r >= SIZE || c < 0 || c >= SIZE) continue;
+    // Simulate the human's best chain of scoring moves
+    // (human scores → gets extra turn → scores again → ...)
+    const totalScore = simulateHumanChain();
+    grid[row][col] = EMPTY;
+    return totalScore;
+}
+
+// Recursively simulate human's chain scoring:
+// Find the best scoring move for human, simulate it,
+// and continue if human gets extra turns.
+// depth parameter prevents infinite recursion.
+function simulateHumanChain(depth) {
+    if (depth === undefined) depth = 0;
+    if (depth >= 6) return 0; // Limit recursion depth to prevent slowdown
+
+    let bestScore = 0;
+    let bestR = -1, bestC = -1;
+
+    // Find all cells where human can score
+    for (let r = 0; r < SIZE; r++) {
+        for (let c = 0; c < SIZE; c++) {
             if (grid[r][c] !== EMPTY) continue;
             grid[r][c] = HUMAN;
             const hCount = countConsecutiveOccupied(r, c, true);
             const vCount = countConsecutiveOccupied(r, c, false);
-            let humanScore = 0;
-            if (hCount === 12) humanScore = 12;
-            else if (hCount === 9) humanScore = 9;
-            else if (hCount === 6) humanScore = 6;
-            else if (hCount === 3) humanScore = 3;
-            if (vCount === 12) humanScore = Math.max(humanScore, 12);
-            else if (vCount === 9) humanScore = Math.max(humanScore, 9);
-            else if (vCount === 6) humanScore = Math.max(humanScore, 6);
-            else if (vCount === 3) humanScore = Math.max(humanScore, 3);
-            if (humanScore > maxHumanScore) maxHumanScore = humanScore;
+            let score = 0;
+            if (hCount === 12) score = 12;
+            else if (hCount === 9) score = 9;
+            else if (hCount === 6) score = 6;
+            else if (hCount === 3) score = 3;
+            if (vCount === 12) score = Math.max(score, 12);
+            else if (vCount === 9) score = Math.max(score, 9);
+            else if (vCount === 6) score = Math.max(score, 6);
+            else if (vCount === 3) score = Math.max(score, 3);
             grid[r][c] = EMPTY;
+            if (score > bestScore) {
+                bestScore = score;
+                bestR = r;
+                bestC = c;
+            }
         }
     }
-    // Also check cells that are 2 steps away in the same row/column
-    // because the AI's move could extend an existing line
-    for (let dr = -2; dr <= 2; dr += 4) {
-        const r = row + dr;
-        if (r < 0 || r >= SIZE) continue;
-        if (grid[r][col] !== EMPTY) continue;
-        grid[r][col] = HUMAN;
-        const vCount = countConsecutiveOccupied(r, col, false);
-        let humanScore = 0;
-        if (vCount === 12) humanScore = 12;
-        else if (vCount === 9) humanScore = 9;
-        else if (vCount === 6) humanScore = 6;
-        else if (vCount === 3) humanScore = 3;
-        if (humanScore > maxHumanScore) maxHumanScore = humanScore;
-        grid[r][col] = EMPTY;
-    }
-    for (let dc = -2; dc <= 2; dc += 4) {
-        const c = col + dc;
-        if (c < 0 || c >= SIZE) continue;
-        if (grid[row][c] !== EMPTY) continue;
-        grid[row][c] = HUMAN;
-        const hCount = countConsecutiveOccupied(row, c, true);
-        let humanScore = 0;
-        if (hCount === 12) humanScore = 12;
-        else if (hCount === 9) humanScore = 9;
-        else if (hCount === 6) humanScore = 6;
-        else if (hCount === 3) humanScore = 3;
-        if (humanScore > maxHumanScore) maxHumanScore = humanScore;
-        grid[row][c] = EMPTY;
-    }
-    grid[row][col] = EMPTY;
-    return maxHumanScore;
+
+    if (bestScore === 0) return 0; // No scoring move for human
+
+    // Simulate human placing at the best scoring cell
+    grid[bestR][bestC] = HUMAN;
+    // Human gets extra turn, so recursively check for more scoring
+    const chainScore = simulateHumanChain(depth + 1);
+    grid[bestR][bestC] = EMPTY;
+
+    return bestScore + chainScore;
 }
+
+
 
 
 
