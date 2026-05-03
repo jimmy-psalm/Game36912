@@ -152,7 +152,8 @@ canvas {
 <body>
 <div class="game-container">
     <h1>3-6-9-12 连线棋</h1>
-    <div class="status-bar" id="statusBar">人类先手 (蓝色) — 请点击棋盘下子</div>
+    <div class="status-bar" id="statusBar">人类先手 (绿色) — 请点击棋盘下子</div>
+
     <div class="board-wrapper">
         <canvas id="boardCanvas"></canvas>
         <div class="score-panel">
@@ -189,10 +190,11 @@ const SIZE = 12;
 const EMPTY = 0, HUMAN = 1, AI = 2;
 const VALID_LENGTHS = [3, 6, 9, 12];
 
-// ---- Canvas setup (smaller board, ~1/4 area) ----
-const CELL = 24;
-const PAD = 12;
-const RADIUS = 9;
+// ---- Canvas setup (full screen board) ----
+const CELL = 48;
+const PAD = 20;
+const RADIUS = 20;
+
 const canvas = document.getElementById('boardCanvas');
 const ctx = canvas.getContext('2d');
 canvas.width = PAD * 2 + CELL * SIZE;
@@ -594,11 +596,29 @@ function drawBoard() {
 
                 ctx.beginPath();
                 ctx.arc(cx, cy, RADIUS, 0, Math.PI * 2);
-                ctx.fillStyle = cell === HUMAN ? '#2a5db0' : '#c07020';
+                ctx.fillStyle = cell === HUMAN ? '#66cc66' : '#c07020';
                 ctx.fill();
                 ctx.strokeStyle = '#3a2a1a';
-                ctx.lineWidth = 1.0;
+                ctx.lineWidth = 1.5;
                 ctx.stroke();
+
+                // Draw move number inside the circle
+                const moveIdx = moveHistory.findIndex(entry => {
+                    const parts = entry.split(/[h,a]\(/);
+                    if (parts.length < 2) return false;
+                    const coords = parts[1].replace(')', '');
+                    const [mr, mc] = coords.split(',').map(Number);
+                    return mr === r && mc === c;
+                });
+                if (moveIdx !== -1) {
+                    const num = moveIdx + 1;
+                    ctx.fillStyle = '#1a1a1a';
+                    ctx.font = 'bold 18px Arial, sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(num, cx, cy);
+                }
+
             }
         }
     }
@@ -643,7 +663,8 @@ function updateTurnIndicator() {
         return;
     }
     if (currentPlayer === HUMAN) {
-        turnIndicator.textContent = '● 轮到人类 (蓝色)';
+        turnIndicator.textContent = '● 轮到人类 (绿色)';
+
         turnIndicator.style.color = '#2a5db0';
     } else {
         turnIndicator.textContent = '● 轮到 AI (橙色)';
@@ -718,7 +739,8 @@ function doAIMove() {
         updateTurnIndicator();
         setTimeout(() => doAIMove(), 300);
     } else {
-        setStatus('轮到人类 (蓝色) — 请点击棋盘下子');
+        setStatus('轮到人类 (绿色) — 请点击棋盘下子');
+
         currentPlayer = HUMAN;
         aiThinking = false;
         updateTurnIndicator();
@@ -756,7 +778,8 @@ function resetGame() {
     stopBtn.disabled = false;
     updateHistoryDisplay();
     updateUI();
-    setStatus('人类先手 (蓝色) — 请点击棋盘下子');
+    setStatus('人类先手 (绿色) — 请点击棋盘下子');
+
     updateTurnIndicator();
 }
 
