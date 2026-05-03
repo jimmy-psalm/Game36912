@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>3-6-9-12 连线棋</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -14,34 +14,34 @@ body {
     align-items: center;
     min-height: 100vh;
     user-select: none;
+    overflow: auto;
 }
 .game-container {
     background: #e8dcc8;
     border-radius: 16px;
-    padding: 16px 24px 20px;
+    padding: 12px 16px 16px;
     box-shadow: 0 8px 32px rgba(0,0,0,0.15);
     text-align: center;
-    max-width: 900px;
-
+    max-width: 98vw;
 }
 h1 {
-    font-size: 22px;
+    font-size: 20px;
     color: #3d2b1a;
     margin-bottom: 4px;
     letter-spacing: 2px;
 }
 .status-bar {
-    font-size: 14px;
+    font-size: 13px;
     color: #5a4030;
-    margin-bottom: 8px;
-    min-height: 22px;
-    line-height: 22px;
+    margin-bottom: 6px;
+    min-height: 20px;
+    line-height: 20px;
 }
 .board-wrapper {
     display: flex;
     justify-content: center;
     align-items: flex-start;
-    gap: 16px;
+    gap: 12px;
     flex-wrap: wrap;
 }
 canvas {
@@ -53,110 +53,112 @@ canvas {
 }
 .score-panel {
     display: flex;
-    flex-direction: column;
-    gap: 10px;
-    min-width: 120px;
-    padding-top: 4px;
+    gap: 8px;
+    min-width: 100px;
 }
 .score-card {
     background: #f5ede0;
     border-radius: 10px;
-    padding: 10px 14px;
+    padding: 6px 10px;
     box-shadow: 0 2px 6px rgba(0,0,0,0.08);
-    text-align: left;
+    text-align: center;
+    flex: 1;
 }
 .score-card .player-name {
-    font-size: 13px;
+    font-size: 12px;
     font-weight: bold;
-    margin-bottom: 2px;
+    margin-bottom: 1px;
 }
-.score-card .player-name.human { color: #2a5db0; }
+.score-card .player-name.human { color: #66cc66; }
 .score-card .player-name.ai { color: #c07020; }
 .score-card .score-value {
-    font-size: 28px;
+    font-size: 24px;
     font-weight: bold;
 }
-.score-card .score-value.human { color: #2a5db0; }
+.score-card .score-value.human { color: #66cc66; }
 .score-card .score-value.ai { color: #c07020; }
 .score-card .score-label {
-    font-size: 12px;
+    font-size: 11px;
     color: #8a7a6a;
 }
 .info-panel {
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 16px;
-    margin-top: 10px;
+    gap: 8px;
+    margin-top: 8px;
     flex-wrap: wrap;
 }
-.reset-btn {
-    font-size: 14px;
+.info-panel button {
+    font-size: 13px;
     font-weight: bold;
-    padding: 6px 22px;
+    padding: 5px 14px;
     border: none;
     border-radius: 8px;
-    background: #c8b498;
-    color: #3d2b1a;
     cursor: pointer;
     transition: background 0.2s;
+}
+.reset-btn {
+    background: #c8b498;
+    color: #3d2b1a;
 }
 .reset-btn:hover { background: #b8a488; }
 .reset-btn:active { background: #a89478; }
-.turn-indicator {
-    font-size: 13px;
-    color: #6a5040;
-    margin-top: 6px;
-}
-.history-panel {
-    margin-top: 10px;
-    text-align: left;
-    max-height: 160px;
-    overflow-y: auto;
-    background: #f5ede0;
-    border-radius: 8px;
-    padding: 8px 12px;
-    font-size: 12px;
-    font-family: 'Consolas', 'Courier New', monospace;
-    line-height: 1.6;
-    border: 1px solid #d8c8b0;
-}
-.history-panel .hist-title {
-    font-weight: bold;
-    color: #3d2b1a;
-    margin-bottom: 4px;
-    font-family: 'Microsoft YaHei', Arial, sans-serif;
-}
-.history-panel .hist-entry {
-    color: #5a4030;
-}
-.history-panel .hist-entry.human { color: #2a5db0; }
-.history-panel .hist-entry.ai { color: #c07020; }
 .stop-btn {
-    font-size: 13px;
-    font-weight: bold;
-    padding: 5px 16px;
-    border: none;
-    border-radius: 8px;
     background: #d05050;
     color: white;
-    cursor: pointer;
-    transition: background 0.2s;
 }
 .stop-btn:hover { background: #c04040; }
 .stop-btn:active { background: #b03030; }
 .stop-btn:disabled { background: #c0b0a0; cursor: default; }
-</style>
+.zoom-btn {
+    background: #b8a888;
+    color: #3d2b1a;
+    font-size: 16px !important;
+    padding: 5px 12px !important;
+    min-width: 36px;
+}
+.zoom-btn:hover { background: #a89878; }
+.zoom-btn:active { background: #988868; }
+.turn-indicator {
+    font-size: 12px;
+    color: #6a5040;
+    margin-top: 4px;
+}
 
+/* Portrait mode: score panel below board, side by side */
+@media (orientation: portrait) {
+    .board-wrapper {
+        flex-direction: column;
+        align-items: center;
+    }
+    .score-panel {
+        flex-direction: row;
+        width: 100%;
+        max-width: 500px;
+    }
+}
+
+/* Landscape mode: score panel to the right of board, stacked vertically */
+@media (orientation: landscape) {
+    .board-wrapper {
+        flex-direction: row;
+        align-items: flex-start;
+    }
+    .score-panel {
+        flex-direction: column;
+        min-width: 100px;
+    }
+}
+</style>
 </head>
 <body>
 <div class="game-container">
-    <h1>3-6-9-12 连线棋</h1>
+    <h1>3-6-9-12</h1>
     <div class="status-bar" id="statusBar">人类先手 (绿色) — 请点击棋盘下子</div>
-
     <div class="board-wrapper">
         <canvas id="boardCanvas"></canvas>
-        <div class="score-panel">
+        <div class="score-panel" id="scorePanel">
             <div class="score-card">
                 <div class="player-name human">● 人类</div>
                 <div class="score-value human" id="humanScore">0</div>
@@ -170,14 +172,12 @@ canvas {
         </div>
     </div>
     <div class="info-panel">
-        <button class="reset-btn" id="resetBtn">重置游戏</button>
-        <button class="stop-btn" id="stopBtn" disabled>停止游戏</button>
+        <button class="zoom-btn" id="zoomOutBtn">−</button>
+        <button class="reset-btn" id="resetBtn">重置</button>
+        <button class="stop-btn" id="stopBtn" disabled>停止</button>
+        <button class="zoom-btn" id="zoomInBtn">+</button>
     </div>
     <div class="turn-indicator" id="turnIndicator">● 轮到人类</div>
-    <div class="history-panel" id="historyPanel">
-        <div class="hist-title">📜 移动记录</div>
-        <div id="historyContent"><em style="color:#a09080;">暂无记录</em></div>
-    </div>
 </div>
 
 <script>
@@ -190,21 +190,21 @@ const SIZE = 12;
 const EMPTY = 0, HUMAN = 1, AI = 2;
 const VALID_LENGTHS = [3, 6, 9, 12];
 
-// ---- Canvas setup (full screen board) ----
-const CELL = 48;
-const PAD = 20;
-const RADIUS = 20;
+// ---- Canvas setup ----
+let CELL = 48;
+let PAD = 20;
+let RADIUS = 20;
+let zoomLevel = 1.0;
 
 const canvas = document.getElementById('boardCanvas');
 const ctx = canvas.getContext('2d');
-canvas.width = PAD * 2 + CELL * SIZE;
-canvas.height = PAD * 2 + CELL * SIZE;
 
 // ---- DOM refs ----
 const statusBar = document.getElementById('statusBar');
 const humanScoreSpan = document.getElementById('humanScore');
 const aiScoreSpan = document.getElementById('aiScore');
 const turnIndicator = document.getElementById('turnIndicator');
+const stopBtn = document.getElementById('stopBtn');
 
 // ---- Game state ----
 let grid = [];
@@ -216,41 +216,20 @@ let gameOver = false;
 let extraTurn = false;
 let aiThinking = false;
 
-// ---- Move history ----
+// ---- Move history (hidden, only in console) ----
 let moveHistory = [];
 let moveNumber = 0;
 let gameStopped = false;
-const historyContent = document.getElementById('historyContent');
-const stopBtn = document.getElementById('stopBtn');
 
 function recordMove(row, col, player) {
     moveNumber++;
     const playerChar = player === HUMAN ? 'h' : 'a';
     const entry = padNumber(moveNumber, 3) + playerChar + '(' + row + ',' + col + ')';
     moveHistory.push(entry);
-    updateHistoryDisplay();
 }
 
 function padNumber(num, len) {
     return String(num).padStart(len, '0');
-}
-
-function updateHistoryDisplay() {
-    if (moveHistory.length === 0) {
-        historyContent.innerHTML = '<em style="color:#a09080;">暂无记录</em>';
-        return;
-    }
-    let html = '';
-    for (let i = 0; i < moveHistory.length; i++) {
-        const entry = moveHistory[i];
-        const isHuman = entry.includes('h(');
-        const cls = isHuman ? 'human' : 'ai';
-        html += '<div class="hist-entry ' + cls + '">#' + entry + '</div>';
-    }
-    historyContent.innerHTML = html;
-    // Auto-scroll to bottom
-    const panel = document.getElementById('historyPanel');
-    panel.scrollTop = panel.scrollHeight;
 }
 
 function stopGame() {
@@ -260,7 +239,6 @@ function stopGame() {
     stopBtn.disabled = true;
     setStatus('⏹ 游戏已停止！移动记录已保存');
     updateTurnIndicator();
-    // Show the move history in console for easy copy
     console.log('=== 移动记录 ===');
     console.log(moveHistory.join(', '));
     console.log('人类得分:', humanScore, 'AI得分:', aiScore);
@@ -268,6 +246,38 @@ function stopGame() {
 
 stopBtn.addEventListener('click', stopGame);
 
+// ---- Zoom controls ----
+function resizeBoard(factor) {
+    const newZoom = zoomLevel * factor;
+    if (newZoom < 0.3 || newZoom > 3.0) return;
+    zoomLevel = newZoom;
+    CELL = Math.round(48 * zoomLevel);
+    PAD = Math.round(20 * zoomLevel);
+    RADIUS = Math.round(20 * zoomLevel);
+    canvas.width = PAD * 2 + CELL * SIZE;
+    canvas.height = PAD * 2 + CELL * SIZE;
+    // Scale UI font sizes
+    const baseFont = 13;
+    const newFont = Math.round(baseFont * Math.sqrt(zoomLevel));
+    document.querySelectorAll('.info-panel button').forEach(btn => {
+        btn.style.fontSize = newFont + 'px';
+    });
+    document.querySelectorAll('.score-card .score-value').forEach(el => {
+        el.style.fontSize = Math.round(24 * Math.sqrt(zoomLevel)) + 'px';
+    });
+    document.querySelectorAll('.score-card .player-name').forEach(el => {
+        el.style.fontSize = Math.round(12 * Math.sqrt(zoomLevel)) + 'px';
+    });
+    document.querySelectorAll('.score-card .score-label').forEach(el => {
+        el.style.fontSize = Math.round(11 * Math.sqrt(zoomLevel)) + 'px';
+    });
+    statusBar.style.fontSize = Math.round(13 * Math.sqrt(zoomLevel)) + 'px';
+    turnIndicator.style.fontSize = Math.round(12 * Math.sqrt(zoomLevel)) + 'px';
+    drawBoard();
+}
+
+document.getElementById('zoomInBtn').addEventListener('click', () => resizeBoard(1.1));
+document.getElementById('zoomOutBtn').addEventListener('click', () => resizeBoard(1 / 1.1));
 
 // ---- Board functions ----
 function initGrid() {
@@ -437,123 +447,79 @@ function getAllEmptyCells() {
     return empty;
 }
 
-/**
- * Evaluate if AI placing here would create a scoring line (exactly 3/6/9/12).
- */
 function evaluateScorePotential(row, col) {
     grid[row][col] = AI;
-
     let score = 0;
     const hCount = countConsecutiveOccupied(row, col, true);
     if (hCount === 12) score += 12;
     else if (hCount === 9) score += 9;
     else if (hCount === 6) score += 6;
     else if (hCount === 3) score += 3;
-
     const vCount = countConsecutiveOccupied(row, col, false);
     if (vCount === 12) score += 12;
     else if (vCount === 9) score += 9;
     else if (vCount === 6) score += 6;
     else if (vCount === 3) score += 3;
-
     grid[row][col] = EMPTY;
     return score;
 }
 
-/**
- * Evaluate if opponent could score by placing here (exactly 3/6/9/12).
- */
 function evaluateBlockPotential(row, col) {
     grid[row][col] = HUMAN;
-
     let score = 0;
     const hCount = countConsecutiveOccupied(row, col, true);
     if (hCount === 12) score += 12;
     else if (hCount === 9) score += 9;
     else if (hCount === 6) score += 6;
     else if (hCount === 3) score += 3;
-
     const vCount = countConsecutiveOccupied(row, col, false);
     if (vCount === 12) score += 12;
     else if (vCount === 9) score += 9;
     else if (vCount === 6) score += 6;
     else if (vCount === 3) score += 3;
-
     grid[row][col] = EMPTY;
     return score;
 }
 
-/**
- * Evaluate if placing here gives the opponent a chance to score on their next move.
- * After AI places at (row, col), check ALL empty cells to see if the human
- * could place there and score (exactly 3/6/9/12).
- * This catches both consecutive threats (A A _) and one-gap threats (A _ a).
- */
 function evaluateDangerPotential(row, col) {
-    // Temporarily place AI piece
     grid[row][col] = AI;
-
     let maxHumanScore = 0;
-
-    // Check every empty cell to see if human could score there
     for (let r = 0; r < SIZE; r++) {
         for (let c = 0; c < SIZE; c++) {
             if (grid[r][c] !== EMPTY) continue;
-
-            // Temporarily place human piece
             grid[r][c] = HUMAN;
-
             const hCount = countConsecutiveOccupied(r, c, true);
             const vCount = countConsecutiveOccupied(r, c, false);
-
             let humanScore = 0;
             if (hCount === 12) humanScore = 12;
             else if (hCount === 9) humanScore = 9;
             else if (hCount === 6) humanScore = 6;
             else if (hCount === 3) humanScore = 3;
-
             if (vCount === 12) humanScore = Math.max(humanScore, 12);
             else if (vCount === 9) humanScore = Math.max(humanScore, 9);
             else if (vCount === 6) humanScore = Math.max(humanScore, 6);
             else if (vCount === 3) humanScore = Math.max(humanScore, 3);
-
-            if (humanScore > maxHumanScore) {
-                maxHumanScore = humanScore;
-            }
-
-            // Remove temporary human piece
+            if (humanScore > maxHumanScore) maxHumanScore = humanScore;
             grid[r][c] = EMPTY;
         }
     }
-
-    // Remove temporary AI piece
     grid[row][col] = EMPTY;
-
-    // Penalty proportional to what the human could score
     return maxHumanScore;
 }
 
 function getBestAIMove() {
     const emptyCells = getAllEmptyCells();
     if (emptyCells.length === 0) return null;
-
     let bestScore = -Infinity;
     let bestMoves = [];
-
     for (const cell of emptyCells) {
         const row = cell[0], col = cell[1];
         let score = 0;
-
-        // High priority: scoring potential
         score += evaluateScorePotential(row, col) * 100;
-        // Medium priority: blocking opponent's scoring potential
         score += evaluateBlockPotential(row, col) * 50;
-        // Low priority: center preference
         const centerDist = Math.abs(row - SIZE / 2) + Math.abs(col - SIZE / 2);
         score += (SIZE - centerDist);
-        // Heavy penalty: creating 2/5/8/11 (gives opponent a chance)
         score -= evaluateDangerPotential(row, col) * 200;
-
         if (score > bestScore) {
             bestScore = score;
             bestMoves = [[row, col]];
@@ -561,14 +527,12 @@ function getBestAIMove() {
             bestMoves.push([row, col]);
         }
     }
-
     return bestMoves[Math.floor(Math.random() * bestMoves.length)];
 }
 
 // ---- Drawing ----
 function drawBoard() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-
     ctx.fillStyle = '#dcc8a8';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -586,6 +550,8 @@ function drawBoard() {
         ctx.lineTo(x, PAD + SIZE * CELL);
         ctx.stroke();
     }
+
+    const fontSize = Math.max(10, Math.round(RADIUS * 0.9));
 
     for (let r = 0; r < SIZE; r++) {
         for (let c = 0; c < SIZE; c++) {
@@ -613,12 +579,11 @@ function drawBoard() {
                 if (moveIdx !== -1) {
                     const num = moveIdx + 1;
                     ctx.fillStyle = '#1a1a1a';
-                    ctx.font = 'bold 18px Arial, sans-serif';
+                    ctx.font = 'bold ' + fontSize + 'px Arial, sans-serif';
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
                     ctx.fillText(num, cx, cy);
                 }
-
             }
         }
     }
@@ -664,8 +629,7 @@ function updateTurnIndicator() {
     }
     if (currentPlayer === HUMAN) {
         turnIndicator.textContent = '● 轮到人类 (绿色)';
-
-        turnIndicator.style.color = '#2a5db0';
+        turnIndicator.style.color = '#66cc66';
     } else {
         turnIndicator.textContent = '● 轮到 AI (橙色)';
         turnIndicator.style.color = '#c07020';
@@ -701,7 +665,6 @@ function handleHumanMove(row, col) {
     }
 }
 
-
 function startAIMove() {
     aiThinking = true;
     setTimeout(() => {
@@ -727,7 +690,6 @@ function doAIMove() {
     recordMove(row, col, AI);
     updateUI();
 
-
     if (result.gameEnded) {
         showGameOver();
         aiThinking = false;
@@ -740,7 +702,6 @@ function doAIMove() {
         setTimeout(() => doAIMove(), 300);
     } else {
         setStatus('轮到人类 (绿色) — 请点击棋盘下子');
-
         currentPlayer = HUMAN;
         aiThinking = false;
         updateTurnIndicator();
@@ -776,13 +737,10 @@ function resetGame() {
     moveHistory = [];
     moveNumber = 0;
     stopBtn.disabled = false;
-    updateHistoryDisplay();
     updateUI();
     setStatus('人类先手 (绿色) — 请点击棋盘下子');
-
     updateTurnIndicator();
 }
-
 
 // ---- Canvas click handler ----
 canvas.addEventListener('click', (e) => {
@@ -804,6 +762,7 @@ document.getElementById('resetBtn').addEventListener('click', resetGame);
 
 // ---- Init ----
 initGrid();
+resizeBoard(1);
 updateUI();
 updateTurnIndicator();
 </script>
