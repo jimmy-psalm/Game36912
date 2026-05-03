@@ -4,7 +4,8 @@ import java.util.Random;
 
 /**
  * AIPlayer - Difficult AI
- * Strategies: score priority, block opponent, extend own lines, random fallback
+ * Updated to match new rules: scoring counts ANY occupied cells (regardless of color)
+ * Strategies: score priority, block opponent, extend occupied lines, random fallback
  */
 public class AIPlayer {
     private GameBoard board;
@@ -44,18 +45,26 @@ public class AIPlayer {
     /**
      * Evaluate a cell's value for the AI
      * Higher score = better move
+     * 
+     * Under new rules: scoring counts ANY occupied cells (any color).
+     * So "scoring potential" means: if AI places here, how many consecutive
+     * occupied cells (of any color) will there be?
      */
     private int evaluateCell(int row, int col) {
         int score = 0;
 
-        // Strategy 1: Can AI score by placing here? (Highest priority)
-        score += evaluateScorePotential(row, col, GameBoard.AI) * 100;
+        // Strategy 1: Can AI create a scoring line by placing here? (Highest priority)
+        // Count consecutive OCCUPIED cells (any color) after placing
+        score += evaluateScorePotential(row, col) * 100;
 
-        // Strategy 2: Can AI block opponent's score? (High priority)
-        score += evaluateScorePotential(row, col, GameBoard.HUMAN) * 50;
+        // Strategy 2: Can AI block opponent from scoring?
+        // Same logic - if opponent places here, how many consecutive occupied cells?
+        // But we evaluate from AI's perspective: blocking means preventing opponent
+        // from reaching 3/6/9/12. We simulate opponent placing here.
+        score += evaluateBlockPotential(row, col) * 50;
 
-        // Strategy 3: Extend AI's own existing lines
-        score += evaluateExtensionPotential(row, col, GameBoard.AI) * 25;
+        // Strategy 3: Extend existing occupied lines (any color)
+        score += evaluateExtensionPotential(row, col) * 25;
 
         // Strategy 4: Center preference (slightly better strategic position)
         int centerDist = Math.abs(row - GameBoard.SIZE / 2) + Math.abs(col - GameBoard.SIZE / 2);
@@ -65,23 +74,24 @@ public class AIPlayer {
     }
 
     /**
-     * Evaluate if placing here would create a scoring line for the given player
+     * Evaluate if placing here would create a scoring line
+     * Counts consecutive OCCUPIED cells (any color) - this is the new rule
      */
-    private int evaluateScorePotential(int row, int col, int player) {
-        // Temporarily place the piece
-        board.placePiece(row, col, player);
+    private int evaluateScorePotential(int row, int col) {
+        // Temporarily place the piece (as AI)
+        board.placePiece(row, col, GameBoard.AI);
 
         int score = 0;
 
-        // Check horizontal
-        int hCount = countConsecutive(row, col, player, true);
+        // Check horizontal - count ANY occupied cells
+        int hCount = countConsecutiveOccupied(row, col, true);
         if (hCount == 12) score += 12;
         else if (hCount == 9) score += 9;
         else if (hCount == 6) score += 6;
         else if (hCount == 3) score += 3;
 
-        // Check vertical
-        int vCount = countConsecutive(row, col, player, false);
+        // Check vertical - count ANY occupied cells
+        int vCount = countConsecutiveOccupied(row, col, false);
         if (vCount == 12) score += 12;
         else if (vCount == 9) score += 9;
         else if (vCount == 6) score += 6;
@@ -94,23 +104,52 @@ public class AIPlayer {
     }
 
     /**
-     * Evaluate if placing here extends an existing line of the given player
+     * Evaluate if opponent could score by placing here (blocking potential)
      */
-    private int evaluateExtensionPotential(int row, int col, int player) {
+    private int evaluateBlockPotential(int row, int col) {
+        // Temporarily place as if HUMAN placed here
+        board.placePiece(row, col, GameBoard.HUMAN);
+
         int score = 0;
 
-        // Temporarily place the piece
-        board.placePiece(row, col, player);
+        // Check horizontal
+        int hCount = countConsecutiveOccupied(row, col, true);
+        if (hCount == 12) score += 12;
+        else if (hCount == 9) score += 9;
+        else if (hCount == 6) score += 6;
+        else if (hCount == 3) score += 3;
 
-        // Check horizontal extension
-        int hCount = countConsecutive(row, col, player, true);
+        // Check vertical
+        int vCount = countConsecutiveOccupied(row, col, false);
+        if (vCount == 12) score += 12;
+        else if (vCount == 9) score += 9;
+        else if (vCount == 6) score += 6;
+        else if (vCount == 3) score += 3;
+
+        // Remove the temporary piece
+        removePiece(row, col);
+
+        return score;
+    }
+
+    /**
+     * Evaluate if placing here extends an existing occupied line
+     */
+    private int evaluateExtensionPotential(int row, int col) {
+        // Temporarily place the piece (as AI)
+        board.placePiece(row, col, GameBoard.AI);
+
+        int score = 0;
+
+        // Check horizontal extension - count ANY occupied cells
+        int hCount = countConsecutiveOccupied(row, col, true);
         if (hCount >= 2 && hCount < 3) score += 1; // Close to 3
         else if (hCount >= 3 && hCount < 6) score += 2; // Already 3, extending toward 6
         else if (hCount >= 6 && hCount < 9) score += 3; // Already 6, extending toward 9
         else if (hCount >= 9 && hCount < 12) score += 4; // Already 9, extending toward 12
 
         // Check vertical extension
-        int vCount = countConsecutive(row, col, player, false);
+        int vCount = countConsecutiveOccupied(row, col, false);
         if (vCount >= 2 && vCount < 3) score += 1;
         else if (vCount >= 3 && vCount < 6) score += 2;
         else if (vCount >= 6 && vCount < 9) score += 3;
@@ -123,27 +162,28 @@ public class AIPlayer {
     }
 
     /**
-     * Count consecutive pieces through (row, col) - same logic as GameEngine
+     * Count consecutive OCCUPIED cells (any player) through (row, col) in a direction
+     * Updated to match new rules: count ANY non-empty cell, regardless of player
      */
-    private int countConsecutive(int row, int col, int player, boolean horizontal) {
+    private int countConsecutiveOccupied(int row, int col, boolean horizontal) {
         int count = 1;
 
         if (horizontal) {
             for (int c = col - 1; c >= 0; c--) {
-                if (board.getCell(row, c) == player) count++;
+                if (board.getCell(row, c) != GameBoard.EMPTY) count++;
                 else break;
             }
             for (int c = col + 1; c < GameBoard.SIZE; c++) {
-                if (board.getCell(row, c) == player) count++;
+                if (board.getCell(row, c) != GameBoard.EMPTY) count++;
                 else break;
             }
         } else {
             for (int r = row - 1; r >= 0; r--) {
-                if (board.getCell(r, col) == player) count++;
+                if (board.getCell(r, col) != GameBoard.EMPTY) count++;
                 else break;
             }
             for (int r = row + 1; r < GameBoard.SIZE; r++) {
-                if (board.getCell(r, col) == player) count++;
+                if (board.getCell(r, col) != GameBoard.EMPTY) count++;
                 else break;
             }
         }
@@ -157,7 +197,6 @@ public class AIPlayer {
     private void removePiece(int row, int col) {
         board.removePiece(row, col);
     }
-
 
     private List<int[]> getAllEmptyCells() {
         List<int[]> empty = new ArrayList<>();
