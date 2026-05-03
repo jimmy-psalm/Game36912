@@ -502,37 +502,16 @@ function evaluateBlockPotential(row, col) {
 function evaluateDangerPotential(row, col) {
     // Temporarily place AI at (row,col)
     grid[row][col] = AI;
-    // Save the grid state before AI's chain simulation
-    const savedGrid = grid.map(r => [...r]);
-    // First, simulate AI's chain (AI takes all scoring opportunities on extra turns)
-    // This function permanently places AI pieces on the board
-    simulateChainPermanent(row, col, AI);
-    // After AI's chain is exhausted, simulate human's chain on remaining board
-    const humanScore = simulateChain(row, col, HUMAN);
-    // Restore grid to saved state
-    for (let r = 0; r < SIZE; r++) {
-        for (let c = 0; c < SIZE; c++) {
-            grid[r][c] = savedGrid[r][c];
-        }
-    }
-    return humanScore;
-}
-
-// Like simulateChain, but permanently places pieces on the board (doesn't undo).
-// Used to simulate AI taking all scoring opportunities before human gets a turn.
-function simulateChainPermanent(pr, pc, player, depth) {
-    if (depth === undefined) depth = 0;
-    if (depth >= 6) return 0;
-
-    let bestScore = 0;
-    let bestR = -1, bestC = -1;
-
-    // Check all cells in the same ROW as the last placed piece
+    // Check all cells in the same row and column for human scoring opportunities.
+    // Only check one level deep (no recursion) to avoid overcounting.
+    let maxHumanScore = 0;
+    
+    // Check all cells in the same ROW
     for (let c = 0; c < SIZE; c++) {
-        if (grid[pr][c] !== EMPTY) continue;
-        grid[pr][c] = player;
-        const hCount = countConsecutiveOccupied(pr, c, true);
-        const vCount = countConsecutiveOccupied(pr, c, false);
+        if (grid[row][c] !== EMPTY) continue;
+        grid[row][c] = HUMAN;
+        const hCount = countConsecutiveOccupied(row, c, true);
+        const vCount = countConsecutiveOccupied(row, c, false);
         let score = 0;
         if (hCount === 12) score = 12;
         else if (hCount === 9) score = 9;
@@ -542,20 +521,16 @@ function simulateChainPermanent(pr, pc, player, depth) {
         else if (vCount === 9) score = Math.max(score, 9);
         else if (vCount === 6) score = Math.max(score, 6);
         else if (vCount === 3) score = Math.max(score, 3);
-        grid[pr][c] = EMPTY;
-        if (score > bestScore) {
-            bestScore = score;
-            bestR = pr;
-            bestC = c;
-        }
+        grid[row][c] = EMPTY;
+        if (score > maxHumanScore) maxHumanScore = score;
     }
-
-    // Check all cells in the same COLUMN as the last placed piece
+    
+    // Check all cells in the same COLUMN
     for (let r = 0; r < SIZE; r++) {
-        if (grid[r][pc] !== EMPTY) continue;
-        grid[r][pc] = player;
-        const hCount = countConsecutiveOccupied(r, pc, true);
-        const vCount = countConsecutiveOccupied(r, pc, false);
+        if (grid[r][col] !== EMPTY) continue;
+        grid[r][col] = HUMAN;
+        const hCount = countConsecutiveOccupied(r, col, true);
+        const vCount = countConsecutiveOccupied(r, col, false);
         let score = 0;
         if (hCount === 12) score = 12;
         else if (hCount === 9) score = 9;
@@ -565,21 +540,14 @@ function simulateChainPermanent(pr, pc, player, depth) {
         else if (vCount === 9) score = Math.max(score, 9);
         else if (vCount === 6) score = Math.max(score, 6);
         else if (vCount === 3) score = Math.max(score, 3);
-        grid[r][pc] = EMPTY;
-        if (score > bestScore) {
-            bestScore = score;
-            bestR = r;
-            bestC = pc;
-        }
+        grid[r][col] = EMPTY;
+        if (score > maxHumanScore) maxHumanScore = score;
     }
-
-    if (bestScore === 0) return 0;
-
-    // Permanently place the piece (don't undo)
-    grid[bestR][bestC] = player;
-    // Recursively continue the chain
-    return bestScore + simulateChainPermanent(bestR, bestC, player, depth + 1);
+    
+    grid[row][col] = EMPTY;
+    return maxHumanScore;
 }
+
 
 
 
