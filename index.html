@@ -383,28 +383,53 @@ function evaluateBlockPotential(row, col) {
 }
 
 /**
- * Evaluate if placing here creates a DANGEROUS line (2/5/8/11) that gives
- * the opponent a chance to score on their next move.
- * Penalty: higher penalty for more dangerous lengths.
+ * Evaluate if placing here gives the opponent a chance to score on their next move.
+ * After AI places at (row, col), check ALL empty cells to see if the human
+ * could place there and score (exactly 3/6/9/12).
+ * This catches both consecutive threats (A A _) and one-gap threats (A _ a).
  */
 function evaluateDangerPotential(row, col) {
+    // Temporarily place AI piece
     grid[row][col] = AI;
 
-    let penalty = 0;
-    const hCount = countConsecutiveOccupied(row, col, true);
-    if (hCount === 2) penalty += 3;
-    else if (hCount === 5) penalty += 6;
-    else if (hCount === 8) penalty += 9;
-    else if (hCount === 11) penalty += 12;
+    let maxHumanScore = 0;
 
-    const vCount = countConsecutiveOccupied(row, col, false);
-    if (vCount === 2) penalty += 3;
-    else if (vCount === 5) penalty += 6;
-    else if (vCount === 8) penalty += 9;
-    else if (vCount === 11) penalty += 12;
+    // Check every empty cell to see if human could score there
+    for (let r = 0; r < SIZE; r++) {
+        for (let c = 0; c < SIZE; c++) {
+            if (grid[r][c] !== EMPTY) continue;
 
+            // Temporarily place human piece
+            grid[r][c] = HUMAN;
+
+            const hCount = countConsecutiveOccupied(r, c, true);
+            const vCount = countConsecutiveOccupied(r, c, false);
+
+            let humanScore = 0;
+            if (hCount === 12) humanScore = 12;
+            else if (hCount === 9) humanScore = 9;
+            else if (hCount === 6) humanScore = 6;
+            else if (hCount === 3) humanScore = 3;
+
+            if (vCount === 12) humanScore = Math.max(humanScore, 12);
+            else if (vCount === 9) humanScore = Math.max(humanScore, 9);
+            else if (vCount === 6) humanScore = Math.max(humanScore, 6);
+            else if (vCount === 3) humanScore = Math.max(humanScore, 3);
+
+            if (humanScore > maxHumanScore) {
+                maxHumanScore = humanScore;
+            }
+
+            // Remove temporary human piece
+            grid[r][c] = EMPTY;
+        }
+    }
+
+    // Remove temporary AI piece
     grid[row][col] = EMPTY;
-    return penalty;
+
+    // Penalty proportional to what the human could score
+    return maxHumanScore;
 }
 
 function getBestAIMove() {
