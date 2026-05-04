@@ -1,6 +1,7 @@
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
+import java.awt.datatransfer.*;
 import java.util.List;
 
 /**
@@ -28,6 +29,7 @@ public class GamePanel extends JPanel {
     private JLabel humanScoreLabel;
     private JLabel aiScoreLabel;
     private JButton resetButton;
+    private JButton undoButton;
     private JFrame parentFrame;
 
     // AI thinking timer
@@ -86,9 +88,17 @@ public class GamePanel extends JPanel {
         resetButton.setFocusPainted(false);
         resetButton.addActionListener(e -> resetGame());
 
+        undoButton = new JButton("悔棋");
+        undoButton.setFont(new Font("Microsoft YaHei", Font.PLAIN, 14));
+        undoButton.setBackground(new Color(176, 128, 96));
+        undoButton.setForeground(Color.WHITE);
+        undoButton.setFocusPainted(false);
+        undoButton.addActionListener(e -> undoMove());
+
         bottomPanel.add(humanScoreLabel);
         bottomPanel.add(aiScoreLabel);
         bottomPanel.add(resetButton);
+        bottomPanel.add(undoButton);
 
         add(bottomPanel, BorderLayout.SOUTH);
     }
@@ -223,9 +233,98 @@ public class GamePanel extends JPanel {
     }
 
     /**
+     * Auto-copy move history to clipboard (silently)
+     */
+    private void autoCopyHistory() {
+        String text = board.getMoveHistoryString();
+        if (text.isEmpty()) return;
+        Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+        StringSelection selection = new StringSelection(text);
+        clipboard.setContents(selection, null);
+    }
+
+    /**
+     * Undo (悔棋): reset board and replay from clipboard
+     */
+    private void undoMove() {
+        // Read clipboard
+        Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+        String text;
+        try {
+            text = (String) clipboard.getData(DataFlavor.stringFlavor);
+        } catch (Exception e) {
+            flashUndoButton();
+            statusLabel.setText("⚠️ 无法读取剪贴板");
+            return;
+        }
+
+        if (text == null || text.trim().isEmpty()) {
+            flashUndoButton();
+            statusLabel.setText("⚠️ 剪贴板为空，无法悔棋");
+            return;
+        }
+
+        text = text.trim();
+
+        // Validate format: e.g. "001h(0,0), 002a(1,1), 003h(2,2)"
+        if (!text.matches("\\d{3}[ha]\\(\\d+,\\d+\\)(?:, \\d{3}[ha]\\(\\d+,\\d+\\))*")) {
+            flashUndoButton();
+            statusLabel.setText("⚠️ 剪贴板内容格式不符，无法悔棋");
+            return;
+        }
+
+        // Parse moves
+        String[] entries = text.split(", ");
+
+        // Reset game completely (including move history)
+        if (aiTimer != null) aiTimer.stop();
+        aiThinking = false;
+        engine.reset();
+        board.clearMoveHistory();
+
+        // Replay each move using processMoveRaw (no recording)
+        for (String entry : entries) {
+            char playerChar = entry.charAt(3);
+            String coords = entry.substring(5, entry.length() - 1);
+            String[] parts = coords.split(",");
+            int r = Integer.parseInt(parts[0]);
+            int c = Integer.parseInt(parts[1]);
+            int player = (playerChar == 'h') ? GameBoard.HUMAN : GameBoard.AI;
+
+            GameEngine.MoveResult result = engine.processMoveRaw(r, c, player);
+            if (!result.valid) {
+                statusLabel.setText("⚠️ 悔棋失败：记录 " + entry + " 无法重放");
+                engine.reset();
+                board.clearMoveHistory();
+                refreshUI();
+                return;
+            }
+            board.recordMove(r, c, player);
+        }
+
+        // After replay, set turn to human
+        engine.setExtraTurn(false);
+        engine.setCurrentPlayer(GameBoard.HUMAN);
+        engine.setGameOver(false);
+        refreshUI();
+        statusLabel.setText("✅ 悔棋成功！已载入 " + entries.length + " 步记录，轮到人类");
+    }
+
+    private void flashUndoButton() {
+        Color originalBg = undoButton.getBackground();
+        undoButton.setBackground(Color.RED);
+        Timer flashTimer = new Timer(500, e -> undoButton.setBackground(originalBg));
+        flashTimer.setRepeats(false);
+        flashTimer.start();
+    }
+
+    /**
      * Process a human player's move
      */
     private void processHumanMove(int row, int col) {
+        // Auto-copy current history to clipboard before human moves
+        autoCopyHistory();
+
         GameEngine.MoveResult result = engine.processMove(row, col, GameBoard.HUMAN);
 
         if (!result.valid) return;

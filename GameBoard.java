@@ -13,10 +13,56 @@ public class GameBoard {
 
     private int[][] grid;
     private List<RedLine> redLines;
+    private List<String> moveHistory;
+    private int moveNumber;
 
     public GameBoard() {
         grid = new int[SIZE][SIZE];
         redLines = new ArrayList<>();
+        moveHistory = new ArrayList<>();
+        moveNumber = 0;
+    }
+
+    /**
+     * Record a move in the history
+     */
+    public void recordMove(int row, int col, int player) {
+        moveNumber++;
+        String playerChar = (player == HUMAN) ? "h" : "a";
+        String entry = padNumber(moveNumber, 3) + playerChar + "(" + row + "," + col + ")";
+        moveHistory.add(entry);
+    }
+
+    private String padNumber(int num, int len) {
+        StringBuilder sb = new StringBuilder();
+        String s = String.valueOf(num);
+        while (sb.length() + s.length() < len) {
+            sb.append('0');
+        }
+        sb.append(s);
+        return sb.toString();
+    }
+
+    /**
+     * Get move history as a list of entries
+     */
+    public List<String> getMoveHistory() {
+        return new ArrayList<>(moveHistory);
+    }
+
+    /**
+     * Get move history as a comma-separated string
+     */
+    public String getMoveHistoryString() {
+        return String.join(", ", moveHistory);
+    }
+
+    /**
+     * Clear move history
+     */
+    public void clearMoveHistory() {
+        moveHistory.clear();
+        moveNumber = 0;
     }
 
     public int getCell(int row, int col) {
@@ -68,6 +114,8 @@ public class GameBoard {
     public void reset() {
         grid = new int[SIZE][SIZE];
         redLines.clear();
+        moveHistory.clear();
+        moveNumber = 0;
     }
 
     /**

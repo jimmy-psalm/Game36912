@@ -56,6 +56,14 @@ public class GameEngine {
         this.extraTurn = extraTurn;
     }
 
+    public void setCurrentPlayer(int player) {
+        this.currentPlayer = player;
+    }
+
+    public void setGameOver(boolean gameOver) {
+        this.gameOver = gameOver;
+    }
+
     /**
      * Process a move: place piece, check for scores, manage turns
      * Returns a MoveResult describing what happened
@@ -64,6 +72,17 @@ public class GameEngine {
      * in horizontal or vertical direction through the placed piece.
      */
     public MoveResult processMove(int row, int col, int player) {
+        MoveResult result = processMoveRaw(row, col, player);
+        if (result.valid) {
+            board.recordMove(row, col, player);
+        }
+        return result;
+    }
+
+    /**
+     * Process a move without recording to moveHistory (for replay/undo).
+     */
+    public MoveResult processMoveRaw(int row, int col, int player) {
         MoveResult result = new MoveResult();
 
         // Place the piece
