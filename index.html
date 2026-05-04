@@ -112,6 +112,17 @@ canvas {
 .copy-btn:active { background: #3a6a95; }
 .copy-btn:disabled { background: #c0b0a0; cursor: default; }
 
+.undo-btn {
+    background: #b08060;
+    color: white;
+}
+.undo-btn:hover { background: #a07050; }
+.undo-btn:active { background: #906040; }
+.undo-btn.error-flash {
+    background: #dc2020 !important;
+    transition: background 0s;
+}
+
 .zoom-btn {
     background: #b8a888;
     color: #3d2b1a;
@@ -176,7 +187,7 @@ canvas {
         <button class="zoom-btn" id="zoomOutBtn">−</button>
         <button class="reset-btn" id="resetBtn">重置</button>
         <button class="copy-btn" id="copyBtn">📋 複製記錄</button>
-
+        <button class="undo-btn" id="undoBtn">↩ 悔棋</button>
         <button class="zoom-btn" id="zoomInBtn">+</button>
     </div>
     <div class="turn-indicator" id="turnIndicator">● 輪到人類</div>
@@ -613,8 +624,7 @@ function evaluateAIChainPotential(row, col) {
 // Recursively simulate chain scoring for a given player.
 // (pr, pc) = the row and column of the last placed piece.
 // player = HUMAN or AI - the player to simulate.
-// Only checks cells in the same row or column as (pr, pc),
-// because a piece can only create scoring opportunities in its own row/column.
+// Checks ALL empty cells on the board for scoring opportunities.
 // depth parameter prevents infinite recursion.
 function simulateChain(pr, pc, player, depth) {
     if (depth === undefined) depth = 0;
@@ -623,49 +633,28 @@ function simulateChain(pr, pc, player, depth) {
     let bestScore = 0;
     let bestR = -1, bestC = -1;
 
-    // Check all cells in the same ROW as the last placed piece
-    for (let c = 0; c < SIZE; c++) {
-        if (grid[pr][c] !== EMPTY) continue;
-        grid[pr][c] = player;
-        const hCount = countConsecutiveOccupied(pr, c, true);
-        const vCount = countConsecutiveOccupied(pr, c, false);
-        let score = 0;
-        if (hCount === 12) score = 12;
-        else if (hCount === 9) score = 9;
-        else if (hCount === 6) score = 6;
-        else if (hCount === 3) score = 3;
-        if (vCount === 12) score = Math.max(score, 12);
-        else if (vCount === 9) score = Math.max(score, 9);
-        else if (vCount === 6) score = Math.max(score, 6);
-        else if (vCount === 3) score = Math.max(score, 3);
-        grid[pr][c] = EMPTY;
-        if (score > bestScore) {
-            bestScore = score;
-            bestR = pr;
-            bestC = c;
-        }
-    }
-
-    // Check all cells in the same COLUMN as the last placed piece
+    // Check ALL empty cells on the board for the best scoring move
     for (let r = 0; r < SIZE; r++) {
-        if (grid[r][pc] !== EMPTY) continue;
-        grid[r][pc] = player;
-        const hCount = countConsecutiveOccupied(r, pc, true);
-        const vCount = countConsecutiveOccupied(r, pc, false);
-        let score = 0;
-        if (hCount === 12) score = 12;
-        else if (hCount === 9) score = 9;
-        else if (hCount === 6) score = 6;
-        else if (hCount === 3) score = 3;
-        if (vCount === 12) score = Math.max(score, 12);
-        else if (vCount === 9) score = Math.max(score, 9);
-        else if (vCount === 6) score = Math.max(score, 6);
-        else if (vCount === 3) score = Math.max(score, 3);
-        grid[r][pc] = EMPTY;
-        if (score > bestScore) {
-            bestScore = score;
-            bestR = r;
-            bestC = pc;
+        for (let c = 0; c < SIZE; c++) {
+            if (grid[r][c] !== EMPTY) continue;
+            grid[r][c] = player;
+            const hCount = countConsecutiveOccupied(r, c, true);
+            const vCount = countConsecutiveOccupied(r, c, false);
+            let score = 0;
+            if (hCount === 12) score = 12;
+            else if (hCount === 9) score = 9;
+            else if (hCount === 6) score = 6;
+            else if (hCount === 3) score = 3;
+            if (vCount === 12) score = Math.max(score, 12);
+            else if (vCount === 9) score = Math.max(score, 9);
+            else if (vCount === 6) score = Math.max(score, 6);
+            else if (vCount === 3) score = Math.max(score, 3);
+            grid[r][c] = EMPTY;
+            if (score > bestScore) {
+                bestScore = score;
+                bestR = r;
+                bestC = c;
+            }
         }
     }
 
@@ -833,12 +822,91 @@ function updateTurnIndicator() {
     }
 }
 
+// ---- Auto-copy to clipboard when human's turn ----
+function autoCopyHistory() {
+    if (moveHistory.length === 0) return;
+    const text = moveHistory.join(', ');
+    navigator.clipboard.writeText(text).catch(() => {
+        // Fallback
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+    });
+}
+
+// ---- Undo (悔棋) ----
+function undoMove() {
+    // Read clipboard content
+    navigator.clipboard.readText().then(text => {
+        text = text.trim();
+        if (!text) {
+            flashUndoButton();
+            setStatus('⚠️ 剪貼板為空，無法悔棋');
+            return;
+        }
+        // Validate format: e.g. "001h(0,0), 002a(1,1), 003h(2,2)"
+        const moveRegex = /^\d{3}[ha]\(\d+,\d+\)(?:, \d{3}[ha]\(\d+,\d+\))*$/;
+        if (!moveRegex.test(text)) {
+            flashUndoButton();
+            setStatus('⚠️ 剪貼板內容格式不符，無法悔棋');
+            return;
+        }
+        // Parse moves
+        const entries = text.split(', ');
+        // Reset game completely
+        resetGame();
+        // Replay each move
+        for (const entry of entries) {
+            const playerChar = entry.charAt(3);
+            const coords = entry.substring(5, entry.length - 1);
+            const [r, c] = coords.split(',').map(Number);
+            const player = playerChar === 'h' ? HUMAN : AI;
+            const result = processMove(r, c, player);
+            if (!result.valid) {
+                setStatus('⚠️ 悔棋失敗：記錄 ' + entry + ' 無法重放');
+                resetGame();
+                return;
+            }
+            recordMove(r, c, player);
+            lastMoveR = r;
+            lastMoveC = c;
+        }
+        // After replay, set turn to human
+        currentPlayer = HUMAN;
+        aiThinking = false;
+        gameOver = false;
+        extraTurn = false;
+        updateUI();
+        setStatus('✅ 悔棋成功！已載入 ' + entries.length + ' 步記錄，輪到人類');
+        updateTurnIndicator();
+    }).catch(() => {
+        flashUndoButton();
+        setStatus('⚠️ 無法讀取剪貼板，請檢查權限');
+    });
+}
+
+function flashUndoButton() {
+    const btn = document.getElementById('undoBtn');
+    btn.classList.add('error-flash');
+    setTimeout(() => {
+        btn.classList.remove('error-flash');
+    }, 500);
+}
+
+document.getElementById('undoBtn').addEventListener('click', undoMove);
+
 // ---- Game flow ----
 function handleHumanMove(row, col) {
     if (gameOver) return;
     if (currentPlayer !== HUMAN) return;
     if (aiThinking) return;
     if (!isEmpty(row, col)) return;
+
+    // Auto-copy current history to clipboard before human moves
+    autoCopyHistory();
 
     const result = processMove(row, col, HUMAN);
     if (!result.valid) return;
