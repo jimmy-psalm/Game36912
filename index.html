@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>3-6-9-12 连线棋</title>
+<title>3-6-9-12 連線棋</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -156,12 +156,12 @@ canvas {
 <body>
 <div class="game-container">
     <h1>3-6-9-12</h1>
-    <div class="status-bar" id="statusBar">人类先手 (绿色) — 请点击棋盘下子</div>
+    <div class="status-bar" id="statusBar">人類先手 (綠色) — 請點擊棋盤下子</div>
     <div class="board-wrapper">
         <canvas id="boardCanvas"></canvas>
         <div class="score-panel" id="scorePanel">
             <div class="score-card">
-                <div class="player-name human">● 人类</div>
+                <div class="player-name human">● 人類</div>
                 <div class="score-value human" id="humanScore">0</div>
                 <div class="score-label">分</div>
             </div>
@@ -179,12 +179,12 @@ canvas {
 
         <button class="zoom-btn" id="zoomInBtn">+</button>
     </div>
-    <div class="turn-indicator" id="turnIndicator">● 轮到人类</div>
+    <div class="turn-indicator" id="turnIndicator">● 輪到人類</div>
 </div>
 
 <script>
 // ============================================================
-//  3-6-9-12 连线棋 (人机对战版) — HTML5 Canvas
+//  3-6-9-12 連線棋 (人機對戰版) — HTML5 Canvas
 // ============================================================
 
 // ---- Constants ----
@@ -218,6 +218,7 @@ let currentPlayer = HUMAN;
 let gameOver = false;
 let extraTurn = false;
 let aiThinking = false;
+let lastMoveR = -1, lastMoveC = -1;
 
 // ---- Move history (hidden, only in console) ----
 let moveHistory = [];
@@ -237,15 +238,15 @@ function padNumber(num, len) {
 
 function copyHistory() {
     if (moveHistory.length === 0) {
-        setStatus('⚠️ 暂无移动记录');
+        setStatus('⚠️ 暫無移動記錄');
         return;
     }
     const text = moveHistory.join(', ');
     navigator.clipboard.writeText(text).then(() => {
-        setStatus('✅ 已复制 ' + moveHistory.length + ' 步移动记录到剪贴板');
-        console.log('=== 移动记录 ===');
+        setStatus('✅ 已複製 ' + moveHistory.length + ' 步移動記錄到剪貼板');
+        console.log('=== 移動記錄 ===');
         console.log(text);
-        console.log('人类得分:', humanScore, 'AI得分:', aiScore);
+        console.log('人類得分:', humanScore, 'AI得分:', aiScore);
     }).catch(() => {
         // Fallback for older browsers
         const ta = document.createElement('textarea');
@@ -254,10 +255,10 @@ function copyHistory() {
         ta.select();
         document.execCommand('copy');
         document.body.removeChild(ta);
-        setStatus('✅ 已复制 ' + moveHistory.length + ' 步移动记录到剪贴板');
-        console.log('=== 移动记录 ===');
+        setStatus('✅ 已複製 ' + moveHistory.length + ' 步移動記錄到剪貼板');
+        console.log('=== 移動記錄 ===');
         console.log(text);
-        console.log('人类得分:', humanScore, 'AI得分:', aiScore);
+        console.log('人類得分:', humanScore, 'AI得分:', aiScore);
     });
 }
 
@@ -635,8 +636,6 @@ function simulateChain(pr, pc, player, depth) {
 
 
 
-
-
 function getBestAIMove() {
     const emptyCells = getAllEmptyCells();
     if (emptyCells.length === 0) return null;
@@ -707,8 +706,15 @@ function drawBoard() {
                 ctx.arc(cx, cy, RADIUS, 0, Math.PI * 2);
                 ctx.fillStyle = cell === HUMAN ? '#66cc66' : '#c07020';
                 ctx.fill();
-                ctx.strokeStyle = '#3a2a1a';
-                ctx.lineWidth = 1.5;
+                // Highlight the last move with a bright yellow border
+                const isLastMove = (r === lastMoveR && c === lastMoveC);
+                if (isLastMove) {
+                    ctx.strokeStyle = '#ffff00';
+                    ctx.lineWidth = 3.5;
+                } else {
+                    ctx.strokeStyle = '#3a2a1a';
+                    ctx.lineWidth = 1.5;
+                }
                 ctx.stroke();
 
                 // Draw move number inside the circle
@@ -766,15 +772,15 @@ function setStatus(msg) {
 
 function updateTurnIndicator() {
     if (gameOver) {
-        turnIndicator.textContent = '● 游戏结束';
+        turnIndicator.textContent = '● 遊戲結束';
         turnIndicator.style.color = '#888';
         return;
     }
     if (currentPlayer === HUMAN) {
-        turnIndicator.textContent = '● 轮到人类 (绿色)';
+        turnIndicator.textContent = '● 輪到人類 (綠色)';
         turnIndicator.style.color = '#66cc66';
     } else {
-        turnIndicator.textContent = '● 轮到 AI (橙色)';
+        turnIndicator.textContent = '● 輪到 AI (橙色)';
         turnIndicator.style.color = '#c07020';
     }
 }
@@ -790,6 +796,8 @@ function handleHumanMove(row, col) {
     if (!result.valid) return;
 
     recordMove(row, col, HUMAN);
+    lastMoveR = row;
+    lastMoveC = col;
     updateUI();
 
     if (result.gameEnded) {
@@ -798,7 +806,7 @@ function handleHumanMove(row, col) {
     }
 
     if (result.scored) {
-        setStatus('人类得分 +' + result.score + '！获得额外回合！');
+        setStatus('人類得分 +' + result.score + '！獲得額外回合！');
         updateTurnIndicator();
     } else {
         setStatus('AI 思考中...');
@@ -831,6 +839,8 @@ function doAIMove() {
     const result = processMove(row, col, AI);
 
     recordMove(row, col, AI);
+    lastMoveR = row;
+    lastMoveC = col;
     updateUI();
 
     if (result.gameEnded) {
@@ -840,11 +850,11 @@ function doAIMove() {
     }
 
     if (result.scored) {
-        setStatus('AI 得分 +' + result.score + '！AI获得额外回合！');
+        setStatus('AI 得分 +' + result.score + '！AI獲得額外回合！');
         updateTurnIndicator();
         setTimeout(() => doAIMove(), 300);
     } else {
-        setStatus('轮到人类 (绿色) — 请点击棋盘下子');
+        setStatus('輪到人類 (綠色) — 請點擊棋盤下子');
         currentPlayer = HUMAN;
         aiThinking = false;
         updateTurnIndicator();
@@ -854,13 +864,13 @@ function doAIMove() {
 function showGameOver() {
     let message;
     if (humanScore > aiScore) {
-        message = '🎉 人类获胜！\n人类: ' + humanScore + ' 分\nAI: ' + aiScore + ' 分';
+        message = '🎉 人類獲勝！\n人類: ' + humanScore + ' 分\nAI: ' + aiScore + ' 分';
     } else if (aiScore > humanScore) {
-        message = '🤖 AI 获胜！\n人类: ' + humanScore + ' 分\nAI: ' + aiScore + ' 分';
+        message = '🤖 AI 獲勝！\n人類: ' + humanScore + ' 分\nAI: ' + aiScore + ' 分';
     } else {
-        message = '🤝 平局！\n双方: ' + humanScore + ' 分';
+        message = '🤝 平局！\n雙方: ' + humanScore + ' 分';
     }
-    setStatus('游戏结束！');
+    setStatus('遊戲結束！');
     updateTurnIndicator();
     setTimeout(() => {
         alert(message);
@@ -879,10 +889,12 @@ function resetGame() {
     gameStopped = false;
     moveHistory = [];
     moveNumber = 0;
+    lastMoveR = -1;
+    lastMoveC = -1;
     copyBtn.disabled = false;
 
     updateUI();
-    setStatus('人类先手 (绿色) — 请点击棋盘下子');
+    setStatus('人類先手 (綠色) — 請點擊棋盤下子');
     updateTurnIndicator();
 }
 
