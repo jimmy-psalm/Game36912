@@ -265,7 +265,55 @@ function copyHistory() {
 copyBtn.addEventListener('click', copyHistory);
 
 
-// ---- Zoom controls ----
+// ---- Auto-fit board to screen size ----
+function autoFitBoard() {
+    const isLandscape = window.innerWidth > window.innerHeight;
+    let availableWidth;
+
+    if (isLandscape) {
+        // Landscape: score panel is on the right (~120px), board on the left
+        availableWidth = window.innerWidth - 140; // 120px for score + 20px gap
+    } else {
+        // Portrait: score panel is below the board, full width available
+        availableWidth = window.innerWidth - 20; // 10px margin on each side
+    }
+
+    // Also account for game-container padding (~32px)
+    availableWidth -= 32;
+
+    // Calculate cell size to fit the board
+    const maxCell = Math.floor((availableWidth - 40) / SIZE); // 40 = PAD*2
+    const clampedCell = Math.max(20, Math.min(48, maxCell));
+
+    // Set zoom level based on the ratio to default 48px
+    zoomLevel = clampedCell / 48;
+    CELL = clampedCell;
+    PAD = Math.round(20 * zoomLevel);
+    RADIUS = Math.round(20 * zoomLevel);
+    canvas.width = PAD * 2 + CELL * SIZE;
+    canvas.height = PAD * 2 + CELL * SIZE;
+
+    // Scale UI font sizes
+    const baseFont = 13;
+    const newFont = Math.round(baseFont * Math.sqrt(zoomLevel));
+    document.querySelectorAll('.info-panel button').forEach(btn => {
+        btn.style.fontSize = newFont + 'px';
+    });
+    document.querySelectorAll('.score-card .score-value').forEach(el => {
+        el.style.fontSize = Math.round(24 * Math.sqrt(zoomLevel)) + 'px';
+    });
+    document.querySelectorAll('.score-card .player-name').forEach(el => {
+        el.style.fontSize = Math.round(12 * Math.sqrt(zoomLevel)) + 'px';
+    });
+    document.querySelectorAll('.score-card .score-label').forEach(el => {
+        el.style.fontSize = Math.round(11 * Math.sqrt(zoomLevel)) + 'px';
+    });
+    statusBar.style.fontSize = Math.round(13 * Math.sqrt(zoomLevel)) + 'px';
+    turnIndicator.style.fontSize = Math.round(12 * Math.sqrt(zoomLevel)) + 'px';
+    drawBoard();
+}
+
+// ---- Zoom controls (manual override) ----
 function resizeBoard(factor) {
     const newZoom = zoomLevel * factor;
     if (newZoom < 0.3 || newZoom > 3.0) return;
@@ -918,9 +966,15 @@ document.getElementById('resetBtn').addEventListener('click', resetGame);
 
 // ---- Init ----
 initGrid();
-resizeBoard(1);
+autoFitBoard();
 updateUI();
 updateTurnIndicator();
+
+// Re-fit board on orientation / resize changes
+window.addEventListener('resize', () => {
+    autoFitBoard();
+    updateUI();
+});
 </script>
 </body>
 </html>
