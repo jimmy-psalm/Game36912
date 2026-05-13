@@ -144,6 +144,17 @@ canvas {
     margin-top: 2px;
     text-align: right;
 }
+.load-btn {
+    background: #7a9a6a;
+    color: white;
+}
+.load-btn:hover { background: #6a8a5a; }
+.load-btn:active { background: #5a7a4a; }
+.load-btn.error-flash {
+    background: #dc2020 !important;
+    transition: background 0s;
+}
+
 .mode-btn {
     font-size: 13px;
     font-weight: bold;
@@ -209,6 +220,7 @@ canvas {
         <button class="step-btn" id="backBtn">← 後退</button>
         <button class="step-btn" id="forwardBtn">→ 前進</button>
         <button class="zoom-btn" id="zoomInBtn">+</button>
+        <button class="load-btn" id="loadBtn">📥 載入</button>
         <button class="mode-btn" id="basicBtn" style="background:#5a8ab5;color:white;">基礎</button>
         <button class="mode-btn" id="advanceBtn" style="background:#c0b0a0;color:white;">進階</button>
     </div>
@@ -366,6 +378,113 @@ function copyHistory() {
 }
 
 copyBtn.addEventListener('click', copyHistory);
+
+// ---- Load from clipboard ----
+const loadBtn = document.getElementById('loadBtn');
+
+function loadFromClipboard() {
+    navigator.clipboard.readText().then(text => {
+        text = text.trim();
+        if (!text) {
+            flashLoadButton();
+            setStatus('⚠️ 剪貼簿為空，無法載入');
+            return;
+        }
+        
+        // Parse the move history format: "001h(0,0), 002a(1,1), 003h(2,2)..."
+        const moveRegex = /(\d{3}[ha]\(\d+,\d+\))/g;
+        const matches = text.match(moveRegex);
+        
+        if (!matches || matches.length === 0) {
+            flashLoadButton();
+            setStatus('⚠️ 剪貼簿內容格式不正確，無法載入');
+            return;
+        }
+        
+        // Reset the game first
+        if (aiTimer) {
+            clearTimeout(aiTimer);
+            aiTimer = null;
+        }
+        aiThinking = false;
+        initGrid();
+        redLines = [];
+        humanScore = 0;
+        aiScore = 0;
+        currentPlayer = HUMAN;
+        gameOver = false;
+        extraTurn = false;
+        lastMoveR = -1;
+        lastMoveC = -1;
+        moveHistory = [];
+        moveNumber = 0;
+        snapshots = [];
+        forwardSnapshots = [];
+        
+        // Parse and replay each move
+        let success = true;
+        for (let i = 0; i < matches.length; i++) {
+            const entry = matches[i];
+            const playerChar = entry.charAt(3);
+            const coords = entry.substring(5, entry.length - 1);
+            const parts = coords.split(',');
+            const r = parseInt(parts[0]);
+            const c = parseInt(parts[1]);
+            const player = playerChar === 'h' ? HUMAN : AI;
+            
+            if (r < 0 || r >= SIZE || c < 0 || c >= SIZE || !isEmpty(r, c)) {
+                success = false;
+                break;
+            }
+            
+            // Take snapshot before each move
+            takeSnapshot();
+            
+            lastMoveR = r;
+            lastMoveC = c;
+            
+            const result = processMove(r, c, player);
+            if (!result.valid) {
+                success = false;
+                break;
+            }
+            
+            recordMove(r, c, player);
+        }
+        
+        if (!success) {
+            // If loading failed, reset everything
+            flashLoadButton();
+            resetGame();
+            setStatus('⚠️ 載入失敗，記錄格式有誤');
+            return;
+        }
+        
+        // After loading all moves, ensure it's human's turn
+        // If the last move was by AI, switch to human
+        if (currentPlayer === AI) {
+            currentPlayer = HUMAN;
+        }
+        extraTurn = false;
+        
+        updateUI();
+        updateTurnIndicator();
+        setStatus('✅ 已載入 ' + matches.length + ' 步記錄，請使用 ← → 回放');
+        autoCopyHistory();
+    }).catch(() => {
+        flashLoadButton();
+        setStatus('⚠️ 無法讀取剪貼簿');
+    });
+}
+
+function flashLoadButton() {
+    loadBtn.classList.add('error-flash');
+    setTimeout(() => {
+        loadBtn.classList.remove('error-flash');
+    }, 500);
+}
+
+loadBtn.addEventListener('click', loadFromClipboard);
 
 // ---- Auto-fit board to screen size ----
 function autoFitBoard() {

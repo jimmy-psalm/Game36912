@@ -132,11 +132,19 @@ public class GamePanel extends JPanel {
         advanceBtn.setFocusPainted(false);
         advanceBtn.addActionListener(e -> setMode(false));
 
+        JButton loadButton = new JButton("📥 载入");
+        loadButton.setFont(new Font("Microsoft YaHei", Font.BOLD, 14));
+        loadButton.setBackground(new Color(122, 154, 106));
+        loadButton.setForeground(Color.WHITE);
+        loadButton.setFocusPainted(false);
+        loadButton.addActionListener(e -> loadFromClipboard());
+
         bottomPanel.add(humanScoreLabel);
         bottomPanel.add(aiScoreLabel);
         bottomPanel.add(resetButton);
         bottomPanel.add(backButton);
         bottomPanel.add(forwardButton);
+        bottomPanel.add(loadButton);
         bottomPanel.add(basicBtn);
         bottomPanel.add(advanceBtn);
 
@@ -467,6 +475,100 @@ public class GamePanel extends JPanel {
         Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
         StringSelection selection = new StringSelection(text);
         clipboard.setContents(selection, null);
+    }
+
+    /**
+     * Load move history from clipboard and replay it
+     */
+    private void loadFromClipboard() {
+        Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+        String text;
+        try {
+            text = (String) clipboard.getData(DataFlavor.stringFlavor);
+        } catch (Exception ex) {
+            flashButton(backButton); // reuse flashButton for visual feedback
+            statusLabel.setText("⚠️ 无法读取剪贴板");
+            return;
+        }
+        
+        if (text == null || text.trim().isEmpty()) {
+            flashButton(backButton);
+            statusLabel.setText("⚠️ 剪贴板为空，无法载入");
+            return;
+        }
+        
+        text = text.trim();
+        
+        // Parse the move history format: "001h(0,0), 002a(1,1), 003h(2,2)..."
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("(\\d{3}[ha]\\(\\d+,\\d+\\))");
+        java.util.regex.Matcher matcher = pattern.matcher(text);
+        java.util.List<String> matches = new java.util.ArrayList<>();
+        while (matcher.find()) {
+            matches.add(matcher.group(1));
+        }
+        
+        if (matches.isEmpty()) {
+            flashButton(backButton);
+            statusLabel.setText("⚠️ 剪贴板内容格式不正确，无法载入");
+            return;
+        }
+        
+        // Reset the game first
+        if (aiTimer != null) {
+            aiTimer.stop();
+        }
+        aiThinking = false;
+        engine.reset();
+        snapshots.clear();
+        forwardSnapshots.clear();
+        
+        // Parse and replay each move
+        boolean success = true;
+        for (int i = 0; i < matches.size(); i++) {
+            String entry = matches.get(i);
+            char playerChar = entry.charAt(3);
+            String coords = entry.substring(5, entry.length() - 1);
+            String[] parts = coords.split(",");
+            int r = Integer.parseInt(parts[0]);
+            int c = Integer.parseInt(parts[1]);
+            int player = (playerChar == 'h') ? GameBoard.HUMAN : GameBoard.AI;
+            
+            if (r < 0 || r >= GameBoard.SIZE || c < 0 || c >= GameBoard.SIZE || !board.isEmpty(r, c)) {
+                success = false;
+                break;
+            }
+            
+            // Take snapshot before each move
+            takeSnapshot();
+            
+            GameEngine.MoveResult result = engine.processMove(r, c, player);
+            if (!result.valid) {
+                success = false;
+                break;
+            }
+            
+            board.recordMove(r, c, player);
+        }
+        
+        if (!success) {
+            flashButton(backButton);
+            engine.reset();
+            snapshots.clear();
+            forwardSnapshots.clear();
+            refreshUI();
+            statusLabel.setText("⚠️ 载入失败，记录格式有误");
+            return;
+        }
+        
+        // After loading all moves, ensure it's human's turn
+        if (engine.getCurrentPlayer() == GameBoard.AI) {
+            engine.setCurrentPlayer(GameBoard.HUMAN);
+        }
+        engine.setExtraTurn(false);
+        
+        refreshUI();
+        statusLabel.setText("✅ 已载入 " + matches.size() + " 步记录，请使用 ← → 回放");
+        autoCopyHistory();
     }
 
     /**
