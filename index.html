@@ -48,7 +48,7 @@ canvas {
     display: block;
     border-radius: 6px;
     cursor: pointer;
-    background: #dcc8a8;
+    background: #f5e6cc;
     box-shadow: inset 0 0 0 1px #b8a080;
 }
 .score-panel {
@@ -69,14 +69,14 @@ canvas {
     font-weight: bold;
     margin-bottom: 1px;
 }
-.score-card .player-name.human { color: #66cc66; }
-.score-card .player-name.ai { color: #c07020; }
+.score-card .player-name.human { color: #ff6b6b; }
+.score-card .player-name.ai { color: #4ecdc4; }
 .score-card .score-value {
     font-size: 24px;
     font-weight: bold;
 }
-.score-card .score-value.human { color: #66cc66; }
-.score-card .score-value.ai { color: #c07020; }
+.score-card .score-value.human { color: #ff6b6b; }
+.score-card .score-value.ai { color: #4ecdc4; }
 .score-card .score-label {
     font-size: 11px;
     color: #8a7a6a;
@@ -112,16 +112,17 @@ canvas {
 .copy-btn:active { background: #3a6a95; }
 .copy-btn:disabled { background: #c0b0a0; cursor: default; }
 
-.undo-btn {
+.step-btn {
     background: #b08060;
     color: white;
 }
-.undo-btn:hover { background: #a07050; }
-.undo-btn:active { background: #906040; }
-.undo-btn.error-flash {
+.step-btn:hover { background: #a07050; }
+.step-btn:active { background: #906040; }
+.step-btn.error-flash {
     background: #dc2020 !important;
     transition: background 0s;
 }
+.step-btn:disabled { background: #c0b0a0; cursor: default; }
 
 .zoom-btn {
     background: #b8a888;
@@ -137,8 +138,27 @@ canvas {
     color: #6a5040;
     margin-top: 4px;
 }
+.mode-indicator {
+    font-size: 11px;
+    color: #6a5040;
+    margin-top: 2px;
+    text-align: right;
+}
+.mode-btn {
+    font-size: 13px;
+    font-weight: bold;
+    padding: 5px 14px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.mode-btn:hover { opacity: 0.85; }
+.mode-btn:active { opacity: 0.7; }
+.mode-btn.active {
+    box-shadow: 0 0 0 2px #3d2b1a;
+}
 
-/* Portrait mode: score panel below board, side by side */
 @media (orientation: portrait) {
     .board-wrapper {
         flex-direction: column;
@@ -151,7 +171,6 @@ canvas {
     }
 }
 
-/* Landscape mode: score panel to the right of board, stacked vertically */
 @media (orientation: landscape) {
     .board-wrapper {
         flex-direction: row;
@@ -167,7 +186,7 @@ canvas {
 <body>
 <div class="game-container">
     <h1>3-6-9-12</h1>
-    <div class="status-bar" id="statusBar">人類先手 (綠色) — 請點擊棋盤下子</div>
+    <div class="status-bar" id="statusBar">人類先手 (珊瑚紅) — 請點擊棋盤下子</div>
     <div class="board-wrapper">
         <canvas id="boardCanvas"></canvas>
         <div class="score-panel" id="scorePanel">
@@ -187,10 +206,14 @@ canvas {
         <button class="zoom-btn" id="zoomOutBtn">−</button>
         <button class="reset-btn" id="resetBtn">重置</button>
         <button class="copy-btn" id="copyBtn">📋 複製記錄</button>
-        <button class="undo-btn" id="undoBtn">↩ 悔棋</button>
+        <button class="step-btn" id="backBtn">← 後退</button>
+        <button class="step-btn" id="forwardBtn">→ 前進</button>
         <button class="zoom-btn" id="zoomInBtn">+</button>
+        <button class="mode-btn" id="basicBtn" style="background:#5a8ab5;color:white;">基礎</button>
+        <button class="mode-btn" id="advanceBtn" style="background:#c0b0a0;color:white;">進階</button>
     </div>
     <div class="turn-indicator" id="turnIndicator">● 輪到人類</div>
+    <div class="mode-indicator" id="modeIndicator">模式：基礎</div>
 </div>
 
 <script>
@@ -202,6 +225,13 @@ canvas {
 const SIZE = 12;
 const EMPTY = 0, HUMAN = 1, AI = 2;
 const VALID_LENGTHS = [3, 6, 9, 12];
+
+// Colors (Plan E)
+const COLOR_BOARD = '#f5e6cc';
+const COLOR_HUMAN = '#ff6b6b';
+const COLOR_AI = '#4ecdc4';
+const COLOR_HUMAN_LINE = '#ff6b6b';
+const COLOR_AI_LINE = '#4ecdc4';
 
 // ---- Canvas setup ----
 let CELL = 48;
@@ -218,7 +248,8 @@ const humanScoreSpan = document.getElementById('humanScore');
 const aiScoreSpan = document.getElementById('aiScore');
 const turnIndicator = document.getElementById('turnIndicator');
 const copyBtn = document.getElementById('copyBtn');
-
+const backBtn = document.getElementById('backBtn');
+const forwardBtn = document.getElementById('forwardBtn');
 
 // ---- Game state ----
 let grid = [];
@@ -231,11 +262,73 @@ let extraTurn = false;
 let aiThinking = false;
 let lastMoveR = -1, lastMoveC = -1;
 
-// ---- Move history (hidden, only in console) ----
+// ---- Mode: 'basic' (show hints) or 'advance' (no hints) ----
+let gameMode = 'basic';
+const modeIndicator = document.getElementById('modeIndicator');
+const basicBtn = document.getElementById('basicBtn');
+const advanceBtn = document.getElementById('advanceBtn');
+
+function setMode(mode) {
+    gameMode = mode;
+    if (mode === 'basic') {
+        basicBtn.style.background = '#5a8ab5';
+        advanceBtn.style.background = '#c0b0a0';
+        basicBtn.classList.add('active');
+        advanceBtn.classList.remove('active');
+        modeIndicator.textContent = '模式：基礎（顯示提示）';
+    } else {
+        basicBtn.style.background = '#c0b0a0';
+        advanceBtn.style.background = '#5a8ab5';
+        basicBtn.classList.remove('active');
+        advanceBtn.classList.add('active');
+        modeIndicator.textContent = '模式：進階（無提示）';
+    }
+    drawBoard();
+}
+
+basicBtn.addEventListener('click', () => setMode('basic'));
+advanceBtn.addEventListener('click', () => setMode('advance'));
+
+// ---- Move history ----
 let moveHistory = [];
 let moveNumber = 0;
 let gameStopped = false;
 
+// ---- Snapshots for forward/backward navigation ----
+let snapshots = [];
+let forwardSnapshots = [];
+
+function takeSnapshot() {
+    snapshots.push({
+        grid: grid.map(row => [...row]),
+        redLines: redLines.map(l => ({...l})),
+        humanScore: humanScore,
+        aiScore: aiScore,
+        currentPlayer: currentPlayer,
+        gameOver: gameOver,
+        extraTurn: extraTurn,
+        lastMoveR: lastMoveR,
+        lastMoveC: lastMoveC,
+        moveHistory: [...moveHistory],
+        moveNumber: moveNumber
+    });
+}
+
+function restoreSnapshot(snap) {
+    grid = snap.grid.map(row => [...row]);
+    redLines = snap.redLines.map(l => ({...l}));
+    humanScore = snap.humanScore;
+    aiScore = snap.aiScore;
+    currentPlayer = snap.currentPlayer;
+    gameOver = snap.gameOver;
+    extraTurn = snap.extraTurn;
+    lastMoveR = snap.lastMoveR;
+    lastMoveC = snap.lastMoveC;
+    moveHistory = [...snap.moveHistory];
+    moveNumber = snap.moveNumber;
+}
+
+// ---- Move history functions ----
 function recordMove(row, col, player) {
     moveNumber++;
     const playerChar = player === HUMAN ? 'h' : 'a';
@@ -259,7 +352,6 @@ function copyHistory() {
         console.log(text);
         console.log('人類得分:', humanScore, 'AI得分:', aiScore);
     }).catch(() => {
-        // Fallback for older browsers
         const ta = document.createElement('textarea');
         ta.value = text;
         document.body.appendChild(ta);
@@ -275,28 +367,22 @@ function copyHistory() {
 
 copyBtn.addEventListener('click', copyHistory);
 
-
 // ---- Auto-fit board to screen size ----
 function autoFitBoard() {
     const isLandscape = window.innerWidth > window.innerHeight;
     let availableWidth;
 
     if (isLandscape) {
-        // Landscape: score panel is on the right (~120px), board on the left
-        availableWidth = window.innerWidth - 140; // 120px for score + 20px gap
+        availableWidth = window.innerWidth - 140;
     } else {
-        // Portrait: score panel is below the board, full width available
-        availableWidth = window.innerWidth - 20; // 10px margin on each side
+        availableWidth = window.innerWidth - 20;
     }
 
-    // Also account for game-container padding (~32px)
     availableWidth -= 32;
 
-    // Calculate cell size to fit the board
-    const maxCell = Math.floor((availableWidth - 40) / SIZE); // 40 = PAD*2
+    const maxCell = Math.floor((availableWidth - 40) / SIZE);
     const clampedCell = Math.max(20, Math.min(48, maxCell));
 
-    // Set zoom level based on the ratio to default 48px
     zoomLevel = clampedCell / 48;
     CELL = clampedCell;
     PAD = Math.round(20 * zoomLevel);
@@ -304,7 +390,6 @@ function autoFitBoard() {
     canvas.width = PAD * 2 + CELL * SIZE;
     canvas.height = PAD * 2 + CELL * SIZE;
 
-    // Scale UI font sizes
     const baseFont = 13;
     const newFont = Math.round(baseFont * Math.sqrt(zoomLevel));
     document.querySelectorAll('.info-panel button').forEach(btn => {
@@ -324,7 +409,6 @@ function autoFitBoard() {
     drawBoard();
 }
 
-// ---- Zoom controls (manual override) ----
 function resizeBoard(factor) {
     const newZoom = zoomLevel * factor;
     if (newZoom < 0.3 || newZoom > 3.0) return;
@@ -334,7 +418,6 @@ function resizeBoard(factor) {
     RADIUS = Math.round(20 * zoomLevel);
     canvas.width = PAD * 2 + CELL * SIZE;
     canvas.height = PAD * 2 + CELL * SIZE;
-    // Scale UI font sizes
     const baseFont = 13;
     const newFont = Math.round(baseFont * Math.sqrt(zoomLevel));
     document.querySelectorAll('.info-panel button').forEach(btn => {
@@ -394,7 +477,7 @@ function isBoardFull() {
 }
 
 // ---- RedLine management ----
-function addRedLine(row, col, horizontal, length) {
+function addRedLine(row, col, horizontal, length, owner) {
     redLines = redLines.filter(existing => {
         if (existing.horizontal !== horizontal) return true;
         if (horizontal) {
@@ -413,10 +496,10 @@ function addRedLine(row, col, horizontal, length) {
             return (eEnd < nStart || eStart > nEnd);
         }
     });
-    redLines.push({ row, col, horizontal, length });
+    redLines.push({ row, col, horizontal, length, owner });
 }
 
-// ---- Line detection: count ANY occupied cells (regardless of color) ----
+// ---- Line detection ----
 function countConsecutiveOccupied(row, col, horizontal) {
     let count = 1;
     if (horizontal) {
@@ -495,11 +578,11 @@ function processMove(row, col, player) {
             aiScore += bestLine.score;
         }
 
-        addRedLine(bestLine.startRow, bestLine.startCol, bestLine.horizontal, bestLine.length);
+        addRedLine(bestLine.startRow, bestLine.startCol, bestLine.horizontal, bestLine.length, player);
 
         result.scored = true;
         result.score = bestLine.score;
-        result.redLine = { row: bestLine.startRow, col: bestLine.startCol, horizontal: bestLine.horizontal, length: bestLine.length };
+        result.redLine = { row: bestLine.startRow, col: bestLine.startCol, horizontal: bestLine.horizontal, length: bestLine.length, owner: player };
 
         extraTurn = true;
     } else {
@@ -560,13 +643,9 @@ function evaluateBlockPotential(row, col) {
 }
 
 function evaluateDangerPotential(row, col) {
-    // Temporarily place AI at (row,col)
     grid[row][col] = AI;
-    // Check all cells in the same row and column for human scoring opportunities.
-    // Only check one level deep (no recursion) to avoid overcounting.
     let maxHumanScore = 0;
     
-    // Check all cells in the same ROW
     for (let c = 0; c < SIZE; c++) {
         if (grid[row][c] !== EMPTY) continue;
         grid[row][c] = HUMAN;
@@ -585,7 +664,6 @@ function evaluateDangerPotential(row, col) {
         if (score > maxHumanScore) maxHumanScore = score;
     }
     
-    // Check all cells in the same COLUMN
     for (let r = 0; r < SIZE; r++) {
         if (grid[r][col] !== EMPTY) continue;
         grid[r][col] = HUMAN;
@@ -608,32 +686,20 @@ function evaluateDangerPotential(row, col) {
     return maxHumanScore;
 }
 
-
-
-
-
 function evaluateAIChainPotential(row, col) {
-    // Temporarily place AI at (row,col)
     grid[row][col] = AI;
-    // Simulate AI's chain of scoring moves (extra turns after scoring).
     const totalScore = simulateChain(row, col, AI);
     grid[row][col] = EMPTY;
     return totalScore;
 }
 
-// Recursively simulate chain scoring for a given player.
-// (pr, pc) = the row and column of the last placed piece.
-// player = HUMAN or AI - the player to simulate.
-// Checks ALL empty cells on the board for scoring opportunities.
-// depth parameter prevents infinite recursion.
 function simulateChain(pr, pc, player, depth) {
     if (depth === undefined) depth = 0;
-    if (depth >= 6) return 0; // Limit recursion depth
+    if (depth >= 6) return 0;
 
     let bestScore = 0;
     let bestR = -1, bestC = -1;
 
-    // Check ALL empty cells on the board for the best scoring move
     for (let r = 0; r < SIZE; r++) {
         for (let c = 0; c < SIZE; c++) {
             if (grid[r][c] !== EMPTY) continue;
@@ -658,20 +724,14 @@ function simulateChain(pr, pc, player, depth) {
         }
     }
 
-    if (bestScore === 0) return 0; // No scoring move for this player
+    if (bestScore === 0) return 0;
 
-    // Simulate player placing at the best scoring cell
     grid[bestR][bestC] = player;
-    // Player gets extra turn, so recursively check for more scoring
     const chainScore = simulateChain(bestR, bestC, player, depth + 1);
     grid[bestR][bestC] = EMPTY;
 
     return bestScore + chainScore;
 }
-
-
-
-
 
 function getBestAIMove() {
     const emptyCells = getAllEmptyCells();
@@ -681,22 +741,16 @@ function getBestAIMove() {
     for (const cell of emptyCells) {
         const row = cell[0], col = cell[1];
         let score = 0;
-        // AI's immediate scoring potential
         const immediateScore = evaluateScorePotential(row, col);
         score += immediateScore * 100;
-        // AI's chain scoring potential (extra turns after scoring)
-        // Only evaluate if AI can score immediately (otherwise no extra turn)
         let aiChain = 0;
         if (immediateScore > 0) {
             aiChain = evaluateAIChainPotential(row, col);
             score += aiChain * 100;
         }
-        // Blocking potential
         score += evaluateBlockPotential(row, col) * 50;
-        // Center preference
         const centerDist = Math.abs(row - SIZE / 2) + Math.abs(col - SIZE / 2);
         score += (SIZE - centerDist);
-        // Danger from human's chain scoring
         score -= evaluateDangerPotential(row, col) * 200;
         if (score > bestScore) {
             bestScore = score;
@@ -708,11 +762,80 @@ function getBestAIMove() {
     return bestMoves[Math.floor(Math.random() * bestMoves.length)];
 }
 
+// ---- Find human scoring hints ----
+function getHumanScoringHints() {
+    const hints = [];
+    for (let r = 0; r < SIZE; r++) {
+        for (let c = 0; c < SIZE; c++) {
+            if (grid[r][c] !== EMPTY) continue;
+            grid[r][c] = HUMAN;
+            const hCount = countConsecutiveOccupied(r, c, true);
+            const vCount = countConsecutiveOccupied(r, c, false);
+            let canScore = false;
+            for (const len of VALID_LENGTHS) {
+                if (hCount === len || vCount === len) {
+                    canScore = true;
+                    break;
+                }
+            }
+            grid[r][c] = EMPTY;
+            if (canScore) {
+                hints.push([r, c]);
+            }
+        }
+    }
+    return hints;
+}
+
+// ---- Find positions where AI will have NO chance to gain point ----
+// For each empty cell, simulate human placing there, then check if AI
+// has ANY move that would score. Return cells where AI cannot score at all.
+function getAIMinScoreHints() {
+    const emptyCells = getAllEmptyCells();
+    if (emptyCells.length === 0) return [];
+    
+    const safeCells = [];
+    
+    for (const [r, c] of emptyCells) {
+        // Temporarily place human piece here
+        grid[r][c] = HUMAN;
+        
+        // Check if AI has ANY move that would score
+        let aiCanScore = false;
+        for (const [ar, ac] of getAllEmptyCells()) {
+            if (grid[ar][ac] !== EMPTY) continue;
+            grid[ar][ac] = AI;
+            const hCount = countConsecutiveOccupied(ar, ac, true);
+            const vCount = countConsecutiveOccupied(ar, ac, false);
+            let canScore = false;
+            for (const len of VALID_LENGTHS) {
+                if (hCount === len || vCount === len) {
+                    canScore = true;
+                    break;
+                }
+            }
+            grid[ar][ac] = EMPTY;
+            if (canScore) {
+                aiCanScore = true;
+                break;
+            }
+        }
+        
+        grid[r][c] = EMPTY;
+        
+        // If AI cannot score at all, this is a safe cell
+        if (!aiCanScore) {
+            safeCells.push([r, c]);
+        }
+    }
+    
+    return safeCells;
+}
 
 // ---- Drawing ----
 function drawBoard() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = '#dcc8a8';
+    ctx.fillStyle = COLOR_BOARD;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     ctx.strokeStyle = '#8a7a6a';
@@ -732,6 +855,32 @@ function drawBoard() {
 
     const fontSize = Math.max(10, Math.round(RADIUS * 0.9));
 
+    // Draw score lines FIRST (behind pieces) so they don't cross numbers inside circles
+    // Thickness doubled from 2.0 to 4.0
+    for (const line of redLines) {
+        const color = line.owner === HUMAN ? COLOR_HUMAN_LINE : COLOR_AI_LINE;
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 4.0;
+
+        if (line.horizontal) {
+            const y = PAD + line.row * CELL + CELL / 2;
+            const x1 = PAD + line.col * CELL + CELL / 2;
+            const x2 = PAD + (line.col + line.length - 1) * CELL + CELL / 2;
+            ctx.beginPath();
+            ctx.moveTo(x1, y);
+            ctx.lineTo(x2, y);
+            ctx.stroke();
+        } else {
+            const x = PAD + line.col * CELL + CELL / 2;
+            const y1 = PAD + line.row * CELL + CELL / 2;
+            const y2 = PAD + (line.row + line.length - 1) * CELL + CELL / 2;
+            ctx.beginPath();
+            ctx.moveTo(x, y1);
+            ctx.lineTo(x, y2);
+            ctx.stroke();
+        }
+    }
+
     for (let r = 0; r < SIZE; r++) {
         for (let c = 0; c < SIZE; c++) {
             const cell = grid[r][c];
@@ -741,9 +890,8 @@ function drawBoard() {
 
                 ctx.beginPath();
                 ctx.arc(cx, cy, RADIUS, 0, Math.PI * 2);
-                ctx.fillStyle = cell === HUMAN ? '#66cc66' : '#c07020';
+                ctx.fillStyle = cell === HUMAN ? COLOR_HUMAN : COLOR_AI;
                 ctx.fill();
-                // Highlight the last move with a bright yellow border
                 const isLastMove = (r === lastMoveR && c === lastMoveC);
                 if (isLastMove) {
                     ctx.strokeStyle = '#ffff00';
@@ -754,7 +902,6 @@ function drawBoard() {
                 }
                 ctx.stroke();
 
-                // Draw move number inside the circle
                 const moveIdx = moveHistory.findIndex(entry => {
                     const parts = entry.split(/[h,a]\(/);
                     if (parts.length < 2) return false;
@@ -774,26 +921,38 @@ function drawBoard() {
         }
     }
 
-    ctx.strokeStyle = '#dc2020';
-    ctx.lineWidth = 2.0;
-    for (const line of redLines) {
-        if (line.horizontal) {
-            const y = PAD + line.row * CELL + CELL / 2;
-            const x1 = PAD + line.col * CELL + CELL / 2;
-            const x2 = PAD + (line.col + line.length - 1) * CELL + CELL / 2;
+    // Draw hints only in 'basic' mode
+    if (currentPlayer === HUMAN && !gameOver && !aiThinking && gameMode === 'basic') {
+        // Golden dotted circles: positions where human can score
+        const scoreHints = getHumanScoringHints();
+        ctx.setLineDash([5, 5]);
+        ctx.lineWidth = 3.5;
+        ctx.strokeStyle = '#ffaa00';
+        for (const [r, c] of scoreHints) {
+            const cx = PAD + c * CELL + CELL / 2;
+            const cy = PAD + r * CELL + CELL / 2;
             ctx.beginPath();
-            ctx.moveTo(x1, y);
-            ctx.lineTo(x2, y);
-            ctx.stroke();
-        } else {
-            const x = PAD + line.col * CELL + CELL / 2;
-            const y1 = PAD + line.row * CELL + CELL / 2;
-            const y2 = PAD + (line.row + line.length - 1) * CELL + CELL / 2;
-            ctx.beginPath();
-            ctx.moveTo(x, y1);
-            ctx.lineTo(x, y2);
+            ctx.arc(cx, cy, RADIUS + 4, 0, Math.PI * 2);
             ctx.stroke();
         }
+        
+        // Blue dotted circles: positions where AI cannot score (exclude golden hint positions)
+        const aiMinHints = getAIMinScoreHints();
+        // Filter out positions that are already golden hints (human can score there)
+        const scoreHintSet = new Set(scoreHints.map(([r, c]) => r + ',' + c));
+        const filteredBlueHints = aiMinHints.filter(([r, c]) => !scoreHintSet.has(r + ',' + c));
+        ctx.setLineDash([5, 5]);
+        ctx.lineWidth = 3.5;
+        ctx.strokeStyle = '#4488ff';
+        for (const [r, c] of filteredBlueHints) {
+            const cx = PAD + c * CELL + CELL / 2;
+            const cy = PAD + r * CELL + CELL / 2;
+            ctx.beginPath();
+            ctx.arc(cx, cy, RADIUS + 4, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+        
+        ctx.setLineDash([]);
     }
 }
 
@@ -814,11 +973,11 @@ function updateTurnIndicator() {
         return;
     }
     if (currentPlayer === HUMAN) {
-        turnIndicator.textContent = '● 輪到人類 (綠色)';
-        turnIndicator.style.color = '#66cc66';
+        turnIndicator.textContent = '● 輪到人類 (珊瑚紅)';
+        turnIndicator.style.color = COLOR_HUMAN;
     } else {
-        turnIndicator.textContent = '● 輪到 AI (橙色)';
-        turnIndicator.style.color = '#c07020';
+        turnIndicator.textContent = '● 輪到 AI (碧藍)';
+        turnIndicator.style.color = COLOR_AI;
     }
 }
 
@@ -827,7 +986,6 @@ function autoCopyHistory() {
     if (moveHistory.length === 0) return;
     const text = moveHistory.join(', ');
     navigator.clipboard.writeText(text).catch(() => {
-        // Fallback
         const ta = document.createElement('textarea');
         ta.value = text;
         document.body.appendChild(ta);
@@ -837,84 +995,196 @@ function autoCopyHistory() {
     });
 }
 
-// ---- Undo (悔棋) ----
-function undoMove() {
-    // Read clipboard content
-    navigator.clipboard.readText().then(text => {
-        text = text.trim();
-        if (!text) {
-            flashUndoButton();
-            setStatus('⚠️ 剪貼板為空，無法悔棋');
-            return;
-        }
-        // Validate format: e.g. "001h(0,0), 002a(1,1), 003h(2,2)"
-        const moveRegex = /^\d{3}[ha]\(\d+,\d+\)(?:, \d{3}[ha]\(\d+,\d+\))*$/;
-        if (!moveRegex.test(text)) {
-            flashUndoButton();
-            setStatus('⚠️ 剪貼板內容格式不符，無法悔棋');
-            return;
-        }
-        // Parse moves
-        const entries = text.split(', ');
-        // Reset game completely
-        resetGame();
-        // Replay each move
-        for (const entry of entries) {
-            const playerChar = entry.charAt(3);
-            const coords = entry.substring(5, entry.length - 1);
-            const [r, c] = coords.split(',').map(Number);
-            const player = playerChar === 'h' ? HUMAN : AI;
-            const result = processMove(r, c, player);
-            if (!result.valid) {
-                setStatus('⚠️ 悔棋失敗：記錄 ' + entry + ' 無法重放');
-                resetGame();
-                return;
-            }
-            recordMove(r, c, player);
-            lastMoveR = r;
-            lastMoveC = c;
-        }
-        // After replay, set turn to human
-        currentPlayer = HUMAN;
-        aiThinking = false;
-        gameOver = false;
-        extraTurn = false;
-        updateUI();
-        setStatus('✅ 悔棋成功！已載入 ' + entries.length + ' 步記錄，輪到人類');
-        updateTurnIndicator();
-    }).catch(() => {
-        flashUndoButton();
-        setStatus('⚠️ 無法讀取剪貼板，請檢查權限');
+// ---- Forward/Backward navigation ----
+function goBack() {
+    if (snapshots.length === 0) {
+        flashStepButton(backBtn);
+        setStatus('⚠️ 已經是最初狀態，無法後退');
+        return;
+    }
+    
+    // Save current state to forwardSnapshots
+    forwardSnapshots.push({
+        grid: grid.map(row => [...row]),
+        redLines: redLines.map(l => ({...l})),
+        humanScore: humanScore,
+        aiScore: aiScore,
+        currentPlayer: currentPlayer,
+        gameOver: gameOver,
+        extraTurn: extraTurn,
+        lastMoveR: lastMoveR,
+        lastMoveC: lastMoveC,
+        moveHistory: [...moveHistory],
+        moveNumber: moveNumber
     });
+    
+    const targetSnap = snapshots.pop();
+    restoreSnapshot(targetSnap);
+    
+    // Ensure it's human's turn (skip AI steps)
+    if (currentPlayer === AI) {
+        // Keep going back until we reach human's turn
+        while (currentPlayer === AI && snapshots.length > 0) {
+            forwardSnapshots.push({
+                grid: grid.map(row => [...row]),
+                redLines: redLines.map(l => ({...l})),
+                humanScore: humanScore,
+                aiScore: aiScore,
+                currentPlayer: currentPlayer,
+                gameOver: gameOver,
+                extraTurn: extraTurn,
+                lastMoveR: lastMoveR,
+                lastMoveC: lastMoveC,
+                moveHistory: [...moveHistory],
+                moveNumber: moveNumber
+            });
+            const s = snapshots.pop();
+            restoreSnapshot(s);
+        }
+    }
+    
+    // If we went back too far and currentPlayer is still AI (no more snapshots), just stay
+    if (currentPlayer === AI) {
+        // We've exhausted all snapshots, AI is still current - this shouldn't happen normally
+        // Just leave it as is
+    }
+    
+    updateUI();
+    updateTurnIndicator();
+    setStatus('✅ 已後退到第 ' + moveNumber + ' 步，輪到人類');
+    autoCopyHistory();
 }
 
-function flashUndoButton() {
-    const btn = document.getElementById('undoBtn');
+function goForward() {
+    if (forwardSnapshots.length === 0) {
+        flashStepButton(forwardBtn);
+        setStatus('⚠️ 已經是最新狀態，無法前進');
+        return;
+    }
+    
+    // Save current state to snapshots
+    snapshots.push({
+        grid: grid.map(row => [...row]),
+        redLines: redLines.map(l => ({...l})),
+        humanScore: humanScore,
+        aiScore: aiScore,
+        currentPlayer: currentPlayer,
+        gameOver: gameOver,
+        extraTurn: extraTurn,
+        lastMoveR: lastMoveR,
+        lastMoveC: lastMoveC,
+        moveHistory: [...moveHistory],
+        moveNumber: moveNumber
+    });
+    
+    const targetSnap = forwardSnapshots.pop();
+    restoreSnapshot(targetSnap);
+    
+    // Ensure it's human's turn (skip AI steps)
+    if (currentPlayer === AI) {
+        while (currentPlayer === AI && forwardSnapshots.length > 0) {
+            snapshots.push({
+                grid: grid.map(row => [...row]),
+                redLines: redLines.map(l => ({...l})),
+                humanScore: humanScore,
+                aiScore: aiScore,
+                currentPlayer: currentPlayer,
+                gameOver: gameOver,
+                extraTurn: extraTurn,
+                lastMoveR: lastMoveR,
+                lastMoveC: lastMoveC,
+                moveHistory: [...moveHistory],
+                moveNumber: moveNumber
+            });
+            const s = forwardSnapshots.pop();
+            restoreSnapshot(s);
+        }
+    }
+    
+    if (currentPlayer === AI) {
+        // Still AI - exhausted forward snapshots
+    }
+    
+    updateUI();
+    updateTurnIndicator();
+    setStatus('✅ 已前進到第 ' + moveNumber + ' 步，輪到人類');
+    autoCopyHistory();
+}
+
+function flashStepButton(btn) {
     btn.classList.add('error-flash');
     setTimeout(() => {
         btn.classList.remove('error-flash');
     }, 500);
 }
 
-document.getElementById('undoBtn').addEventListener('click', undoMove);
+backBtn.addEventListener('click', goBack);
+forwardBtn.addEventListener('click', goForward);
 
-// ---- Game flow ----
-function handleHumanMove(row, col) {
+// ---- Reset ----
+document.getElementById('resetBtn').addEventListener('click', resetGame);
+
+function resetGame() {
+    if (aiTimer) {
+        clearTimeout(aiTimer);
+        aiTimer = null;
+    }
+    aiThinking = false;
+    initGrid();
+    redLines = [];
+    humanScore = 0;
+    aiScore = 0;
+    currentPlayer = HUMAN;
+    gameOver = false;
+    extraTurn = false;
+    lastMoveR = -1;
+    lastMoveC = -1;
+    moveHistory = [];
+    moveNumber = 0;
+    snapshots = [];
+    forwardSnapshots = [];
+    updateUI();
+    updateTurnIndicator();
+    setStatus('人類先手 (珊瑚紅) — 請點擊棋盤下子');
+}
+
+// ---- Human move handler ----
+let aiTimer = null;
+
+function handleBoardClick(e) {
     if (gameOver) return;
     if (currentPlayer !== HUMAN) return;
     if (aiThinking) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const mx = (e.clientX - rect.left) * scaleX;
+    const my = (e.clientY - rect.top) * scaleY;
+
+    const col = Math.floor((mx - PAD) / CELL);
+    const row = Math.floor((my - PAD) / CELL);
+
+    if (row < 0 || row >= SIZE || col < 0 || col >= SIZE) return;
     if (!isEmpty(row, col)) return;
 
-    // Auto-copy current history to clipboard before human moves
+    // Auto-copy history before human moves
     autoCopyHistory();
+
+    // Take snapshot before the move
+    takeSnapshot();
+    // Clear forward snapshots since we're making a new move
+    forwardSnapshots = [];
+
+    lastMoveR = row;
+    lastMoveC = col;
 
     const result = processMove(row, col, HUMAN);
     if (!result.valid) return;
 
     recordMove(row, col, HUMAN);
-    lastMoveR = row;
-    lastMoveC = col;
     updateUI();
+    updateTurnIndicator();
 
     if (result.gameEnded) {
         showGameOver();
@@ -923,7 +1193,6 @@ function handleHumanMove(row, col) {
 
     if (result.scored) {
         setStatus('人類得分 +' + result.score + '！獲得額外回合！');
-        updateTurnIndicator();
     } else {
         setStatus('AI 思考中...');
         currentPlayer = AI;
@@ -932,11 +1201,14 @@ function handleHumanMove(row, col) {
     }
 }
 
+canvas.addEventListener('click', handleBoardClick);
+
+// ---- AI move ----
 function startAIMove() {
     aiThinking = true;
-    setTimeout(() => {
+    aiTimer = setTimeout(() => {
         doAIMove();
-    }, 300);
+    }, 500);
 }
 
 function doAIMove() {
@@ -952,12 +1224,18 @@ function doAIMove() {
     }
 
     const row = move[0], col = move[1];
-    const result = processMove(row, col, AI);
 
-    recordMove(row, col, AI);
+    // Take snapshot before AI move
+    takeSnapshot();
+    forwardSnapshots = [];
+
     lastMoveR = row;
     lastMoveC = col;
+
+    const result = processMove(row, col, AI);
+    recordMove(row, col, AI);
     updateUI();
+    updateTurnIndicator();
 
     if (result.gameEnded) {
         showGameOver();
@@ -967,82 +1245,56 @@ function doAIMove() {
 
     if (result.scored) {
         setStatus('AI 得分 +' + result.score + '！AI獲得額外回合！');
-        updateTurnIndicator();
-        setTimeout(() => doAIMove(), 300);
+        aiTimer = setTimeout(() => {
+            doAIMove();
+        }, 500);
     } else {
-        setStatus('輪到人類 (綠色) — 請點擊棋盤下子');
+        setStatus('輪到人類 (珊瑚紅) — 請點擊棋盤下子');
         currentPlayer = HUMAN;
-        aiThinking = false;
         updateTurnIndicator();
+        // Set aiThinking to false BEFORE drawing so hints appear immediately
+        aiThinking = false;
+        // Auto-copy history when it becomes human's turn
+        autoCopyHistory();
+        // Redraw board immediately to show hints (aiThinking is now false)
+        drawBoard();
     }
 }
 
+// ---- Game over ----
 function showGameOver() {
     let message;
     if (humanScore > aiScore) {
-        message = '🎉 人類獲勝！\n人類: ' + humanScore + ' 分\nAI: ' + aiScore + ' 分';
+        message = '🎉 人類獲勝！\n\n人類: ' + humanScore + ' 分\nAI: ' + aiScore + ' 分';
     } else if (aiScore > humanScore) {
-        message = '🤖 AI 獲勝！\n人類: ' + humanScore + ' 分\nAI: ' + aiScore + ' 分';
+        message = '🤖 AI 獲勝！\n\n人類: ' + humanScore + ' 分\nAI: ' + aiScore + ' 分';
     } else {
-        message = '🤝 平局！\n雙方: ' + humanScore + ' 分';
+        message = '🤝 平局！\n\n雙方: ' + humanScore + ' 分';
     }
     setStatus('遊戲結束！');
     updateTurnIndicator();
-    setTimeout(() => {
-        alert(message);
-    }, 100);
+    alert(message);
 }
-
-function resetGame() {
-    aiThinking = false;
-    initGrid();
-    redLines = [];
-    humanScore = 0;
-    aiScore = 0;
-    currentPlayer = HUMAN;
-    gameOver = false;
-    extraTurn = false;
-    gameStopped = false;
-    moveHistory = [];
-    moveNumber = 0;
-    lastMoveR = -1;
-    lastMoveC = -1;
-    copyBtn.disabled = false;
-
-    updateUI();
-    setStatus('人類先手 (綠色) — 請點擊棋盤下子');
-    updateTurnIndicator();
-}
-
-// ---- Canvas click handler ----
-canvas.addEventListener('click', (e) => {
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-    const mx = (e.clientX - rect.left) * scaleX;
-    const my = (e.clientY - rect.top) * scaleY;
-
-    const col = Math.floor((mx - PAD) / CELL);
-    const row = Math.floor((my - PAD) / CELL);
-
-    if (row < 0 || row >= SIZE || col < 0 || col >= SIZE) return;
-    handleHumanMove(row, col);
-});
-
-// ---- Reset button ----
-document.getElementById('resetBtn').addEventListener('click', resetGame);
 
 // ---- Init ----
 initGrid();
 autoFitBoard();
 updateUI();
 updateTurnIndicator();
+setStatus('人類先手 (珊瑚紅) — 請點擊棋盤下子');
 
-// Re-fit board on orientation / resize changes
-window.addEventListener('resize', () => {
-    autoFitBoard();
-    updateUI();
+window.addEventListener('resize', autoFitBoard);
+
+// ---- Keyboard shortcuts ----
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'r' || e.key === 'R') resetGame();
+    if (e.key === 'c' || e.key === 'C') copyHistory();
+    if (e.key === 'z' || e.key === 'Z') goBack();
+    if (e.key === 'x' || e.key === 'X') goForward();
 });
+
+console.log('3-6-9-12 連線棋已啟動');
+console.log('快捷鍵: R=重置, C=複製, Z=後退, X=前進');
 </script>
 </body>
 </html>

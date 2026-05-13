@@ -3,6 +3,7 @@ import java.awt.*;
 import java.awt.event.*;
 import java.awt.datatransfer.*;
 import java.util.List;
+import java.util.ArrayList;
 
 /**
  * GamePanel - Main Swing UI
@@ -13,15 +14,16 @@ public class GamePanel extends JPanel {
     private GameEngine engine;
     private AIPlayer ai;
 
-    // UI constants
+    // UI constants - Plan E colors
     private static final int CELL_SIZE = 48;
     private static final int GRID_PADDING = 30;
     private static final int PIECE_RADIUS = 18;
-    private static final Color BOARD_COLOR = new Color(220, 200, 170);
+    private static final Color BOARD_COLOR = new Color(245, 230, 204); // #f5e6cc
     private static final Color GRID_LINE_COLOR = new Color(100, 80, 60);
-    private static final Color HUMAN_COLOR = new Color(50, 100, 220);
-    private static final Color AI_COLOR = new Color(220, 120, 30);
-    private static final Color RED_LINE_COLOR = new Color(220, 30, 30);
+    private static final Color HUMAN_COLOR = new Color(255, 107, 107); // #ff6b6b coral red
+    private static final Color AI_COLOR = new Color(78, 205, 196); // #4ecdc4 teal
+    private static final Color HUMAN_LINE_COLOR = new Color(255, 107, 107); // coral red for human scores
+    private static final Color AI_LINE_COLOR = new Color(78, 205, 196); // teal for AI scores
     private static final Color BG_COLOR = new Color(240, 230, 210);
 
     // UI components
@@ -29,12 +31,23 @@ public class GamePanel extends JPanel {
     private JLabel humanScoreLabel;
     private JLabel aiScoreLabel;
     private JButton resetButton;
-    private JButton undoButton;
+    private JButton backButton;
+    private JButton forwardButton;
+    private JButton basicBtn;
+    private JButton advanceBtn;
+    private JLabel modeLabel;
     private JFrame parentFrame;
+    
+    // Game mode: true = basic (show hints), false = advance (no hints)
+    private boolean basicMode = true;
 
     // AI thinking timer
     private Timer aiTimer;
     private boolean aiThinking;
+
+    // Snapshots for forward/backward navigation
+    private List<GameSnapshot> snapshots;
+    private List<GameSnapshot> forwardSnapshots;
 
     public GamePanel(JFrame frame) {
         this.parentFrame = frame;
@@ -42,6 +55,8 @@ public class GamePanel extends JPanel {
         this.engine = new GameEngine(board);
         this.ai = new AIPlayer(board);
         this.aiThinking = false;
+        this.snapshots = new ArrayList<>();
+        this.forwardSnapshots = new ArrayList<>();
 
         setLayout(new BorderLayout());
         setBackground(BG_COLOR);
@@ -55,7 +70,7 @@ public class GamePanel extends JPanel {
         titleLabel.setForeground(new Color(60, 40, 20));
         topPanel.add(titleLabel, BorderLayout.NORTH);
 
-        statusLabel = new JLabel("人类先手 (蓝色) - 请点击棋盘下子", SwingConstants.CENTER);
+        statusLabel = new JLabel("人类先手 (珊瑚红) - 请点击棋盘下子", SwingConstants.CENTER);
         statusLabel.setFont(new Font("Microsoft YaHei", Font.PLAIN, 14));
         statusLabel.setForeground(new Color(80, 60, 40));
         topPanel.add(statusLabel, BorderLayout.SOUTH);
@@ -70,7 +85,7 @@ public class GamePanel extends JPanel {
         ));
         add(boardPanel, BorderLayout.CENTER);
 
-        // Bottom panel: scores and reset
+        // Bottom panel: scores and buttons
         JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 10));
         bottomPanel.setBackground(BG_COLOR);
 
@@ -88,19 +103,68 @@ public class GamePanel extends JPanel {
         resetButton.setFocusPainted(false);
         resetButton.addActionListener(e -> resetGame());
 
-        undoButton = new JButton("悔棋");
-        undoButton.setFont(new Font("Microsoft YaHei", Font.PLAIN, 14));
-        undoButton.setBackground(new Color(176, 128, 96));
-        undoButton.setForeground(Color.WHITE);
-        undoButton.setFocusPainted(false);
-        undoButton.addActionListener(e -> undoMove());
+        backButton = new JButton("← 后退");
+        backButton.setFont(new Font("Microsoft YaHei", Font.PLAIN, 14));
+        backButton.setBackground(new Color(176, 128, 96));
+        backButton.setForeground(Color.WHITE);
+        backButton.setFocusPainted(false);
+        backButton.addActionListener(e -> goBack());
+
+        forwardButton = new JButton("→ 前进");
+        forwardButton.setFont(new Font("Microsoft YaHei", Font.PLAIN, 14));
+        forwardButton.setBackground(new Color(176, 128, 96));
+        forwardButton.setForeground(Color.WHITE);
+        forwardButton.setFocusPainted(false);
+        forwardButton.addActionListener(e -> goForward());
+
+        // Mode buttons
+        basicBtn = new JButton("基础");
+        basicBtn.setFont(new Font("Microsoft YaHei", Font.BOLD, 14));
+        basicBtn.setBackground(new Color(90, 138, 181));
+        basicBtn.setForeground(Color.WHITE);
+        basicBtn.setFocusPainted(false);
+        basicBtn.addActionListener(e -> setMode(true));
+        
+        advanceBtn = new JButton("进阶");
+        advanceBtn.setFont(new Font("Microsoft YaHei", Font.BOLD, 14));
+        advanceBtn.setBackground(new Color(192, 176, 160));
+        advanceBtn.setForeground(Color.WHITE);
+        advanceBtn.setFocusPainted(false);
+        advanceBtn.addActionListener(e -> setMode(false));
 
         bottomPanel.add(humanScoreLabel);
         bottomPanel.add(aiScoreLabel);
         bottomPanel.add(resetButton);
-        bottomPanel.add(undoButton);
+        bottomPanel.add(backButton);
+        bottomPanel.add(forwardButton);
+        bottomPanel.add(basicBtn);
+        bottomPanel.add(advanceBtn);
 
         add(bottomPanel, BorderLayout.SOUTH);
+        
+        // Mode label in top-right corner
+        modeLabel = new JLabel("模式：基础（显示提示）");
+        modeLabel.setFont(new Font("Microsoft YaHei", Font.PLAIN, 11));
+        modeLabel.setForeground(new Color(106, 80, 64));
+        modeLabel.setHorizontalAlignment(SwingConstants.RIGHT);
+        topPanel.add(modeLabel, BorderLayout.EAST);
+    }
+
+    /**
+     * Set game mode: true = basic (show hints), false = advance (no hints)
+     */
+    private void setMode(boolean basic) {
+        basicMode = basic;
+        if (basic) {
+            basicBtn.setBackground(new Color(90, 138, 181));
+            advanceBtn.setBackground(new Color(192, 176, 160));
+            modeLabel.setText("模式：基础（显示提示）");
+        } else {
+            basicBtn.setBackground(new Color(192, 176, 160));
+            advanceBtn.setBackground(new Color(90, 138, 181));
+            modeLabel.setText("模式：进阶（无提示）");
+        }
+        repaint();
     }
 
     /**
@@ -129,21 +193,21 @@ public class GamePanel extends JPanel {
             g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
             drawBoard(g2d);
+            // Draw score lines BEFORE pieces so they appear behind the circles
+            // This prevents lines from crossing numbers inside circles
+            drawScoreLines(g2d);
             drawPieces(g2d);
-            drawRedLines(g2d);
+            drawHints(g2d);
         }
 
         private void drawBoard(Graphics2D g) {
             g.setColor(GRID_LINE_COLOR);
             g.setStroke(new BasicStroke(1.5f));
 
-            // Draw grid lines
             for (int i = 0; i <= GameBoard.SIZE; i++) {
-                // Horizontal lines
                 int y = GRID_PADDING + i * CELL_SIZE;
                 g.drawLine(GRID_PADDING, y, GRID_PADDING + GameBoard.SIZE * CELL_SIZE, y);
 
-                // Vertical lines
                 int x = GRID_PADDING + i * CELL_SIZE;
                 g.drawLine(x, GRID_PADDING, x, GRID_PADDING + GameBoard.SIZE * CELL_SIZE);
             }
@@ -163,11 +227,9 @@ public class GamePanel extends JPanel {
                             g.setColor(AI_COLOR);
                         }
 
-                        // Draw filled circle
                         g.fillOval(cx - PIECE_RADIUS, cy - PIECE_RADIUS,
                                    PIECE_RADIUS * 2, PIECE_RADIUS * 2);
 
-                        // Draw border
                         g.setColor(Color.BLACK);
                         g.setStroke(new BasicStroke(1.5f));
                         g.drawOval(cx - PIECE_RADIUS, cy - PIECE_RADIUS,
@@ -177,25 +239,193 @@ public class GamePanel extends JPanel {
             }
         }
 
-        private void drawRedLines(Graphics2D g) {
+        private void drawScoreLines(Graphics2D g) {
             List<GameBoard.RedLine> redLines = board.getRedLines();
-            g.setColor(RED_LINE_COLOR);
-            g.setStroke(new BasicStroke(3.0f));
 
             for (GameBoard.RedLine line : redLines) {
+                // Use owner-specific color
+                if (line.owner == GameBoard.HUMAN) {
+                    g.setColor(HUMAN_LINE_COLOR);
+                } else {
+                    g.setColor(AI_LINE_COLOR);
+                }
+                // Thickness doubled from 3.0f to 6.0f
+                g.setStroke(new BasicStroke(6.0f));
+
                 if (line.horizontal) {
                     int y = GRID_PADDING + line.row * CELL_SIZE + CELL_SIZE / 2;
                     int x1 = GRID_PADDING + line.col * CELL_SIZE + CELL_SIZE / 2;
                     int x2 = GRID_PADDING + (line.col + line.length - 1) * CELL_SIZE + CELL_SIZE / 2;
-                    g.drawLine(x1, y, x2, y);
+                    // Connect circle edges, not centers - use PIECE_RADIUS + 5 to avoid crossing numbers
+                    int offset = (x2 > x1) ? (PIECE_RADIUS + 5) : -(PIECE_RADIUS + 5);
+                    g.drawLine(x1 + offset, y, x2 - offset, y);
                 } else {
                     int x = GRID_PADDING + line.col * CELL_SIZE + CELL_SIZE / 2;
                     int y1 = GRID_PADDING + line.row * CELL_SIZE + CELL_SIZE / 2;
                     int y2 = GRID_PADDING + (line.row + line.length - 1) * CELL_SIZE + CELL_SIZE / 2;
-                    g.drawLine(x, y1, x, y2);
+                    int offset = (y2 > y1) ? (PIECE_RADIUS + 5) : -(PIECE_RADIUS + 5);
+                    g.drawLine(x, y1 + offset, x, y2 - offset);
                 }
             }
         }
+
+        private void drawHints(Graphics2D g) {
+            // Draw hints only in basic mode
+            if (engine.getCurrentPlayer() == GameBoard.HUMAN && !engine.isGameOver() && !aiThinking && basicMode) {
+                // Golden dotted circles: positions where human can score
+                java.util.List<int[]> scoreHints = getHumanScoringHints();
+                g.setStroke(new BasicStroke(3.5f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL, 0, new float[]{5, 5}, 0));
+                g.setColor(new Color(255, 170, 0)); // golden dotted circle
+                for (int[] hint : scoreHints) {
+                    int cx = GRID_PADDING + hint[1] * CELL_SIZE + CELL_SIZE / 2;
+                    int cy = GRID_PADDING + hint[0] * CELL_SIZE + CELL_SIZE / 2;
+                    g.drawOval(cx - PIECE_RADIUS - 4, cy - PIECE_RADIUS - 4,
+                               (PIECE_RADIUS + 4) * 2, (PIECE_RADIUS + 4) * 2);
+                }
+                
+                // Blue dotted circles: positions where AI cannot score (exclude golden hint positions)
+                java.util.List<int[]> aiMinHints = getAIMinScoreHints();
+                // Filter out positions that are already golden hints (human can score there)
+                java.util.Set<String> scoreHintSet = new java.util.HashSet<>();
+                for (int[] hint : scoreHints) {
+                    scoreHintSet.add(hint[0] + "," + hint[1]);
+                }
+                java.util.List<int[]> filteredBlueHints = new java.util.ArrayList<>();
+                for (int[] hint : aiMinHints) {
+                    if (!scoreHintSet.contains(hint[0] + "," + hint[1])) {
+                        filteredBlueHints.add(hint);
+                    }
+                }
+                g.setStroke(new BasicStroke(3.5f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL, 0, new float[]{5, 5}, 0));
+                g.setColor(new Color(68, 136, 255)); // blue dotted circle
+                for (int[] hint : filteredBlueHints) {
+                    int cx = GRID_PADDING + hint[1] * CELL_SIZE + CELL_SIZE / 2;
+                    int cy = GRID_PADDING + hint[0] * CELL_SIZE + CELL_SIZE / 2;
+                    g.drawOval(cx - PIECE_RADIUS - 4, cy - PIECE_RADIUS - 4,
+                               (PIECE_RADIUS + 4) * 2, (PIECE_RADIUS + 4) * 2);
+                }
+                
+                g.setStroke(new BasicStroke(1.5f));
+            }
+        }
+    }
+
+    /**
+     * Find positions where human can score
+     */
+    private java.util.List<int[]> getHumanScoringHints() {
+        java.util.List<int[]> hints = new ArrayList<>();
+        int[] validLengths = {3, 6, 9, 12};
+        
+        for (int r = 0; r < GameBoard.SIZE; r++) {
+            for (int c = 0; c < GameBoard.SIZE; c++) {
+                if (!board.isEmpty(r, c)) continue;
+                
+                // Temporarily place human piece and check
+                board.placePiece(r, c, GameBoard.HUMAN);
+                
+                // Check horizontal
+                int hCount = countConsecutiveOccupied(r, c, true);
+                // Check vertical
+                int vCount = countConsecutiveOccupied(r, c, false);
+                
+                boolean canScore = false;
+                for (int len : validLengths) {
+                    if (hCount == len || vCount == len) {
+                        canScore = true;
+                        break;
+                    }
+                }
+                
+                board.removePiece(r, c);
+                
+                if (canScore) {
+                    hints.add(new int[]{r, c});
+                }
+            }
+        }
+        return hints;
+    }
+
+    /**
+     * Find positions where AI will have NO chance to gain point
+     * For each empty cell, simulate human placing there, then check if AI
+     * has ANY move that would score. Return cells where AI cannot score at all.
+     */
+    private java.util.List<int[]> getAIMinScoreHints() {
+        java.util.List<int[]> emptyCells = new ArrayList<>();
+        for (int r = 0; r < GameBoard.SIZE; r++) {
+            for (int c = 0; c < GameBoard.SIZE; c++) {
+                if (board.isEmpty(r, c)) {
+                    emptyCells.add(new int[]{r, c});
+                }
+            }
+        }
+        if (emptyCells.isEmpty()) return emptyCells;
+        
+        java.util.List<int[]> safeCells = new ArrayList<>();
+        int[] validLengths = {3, 6, 9, 12};
+        
+        for (int[] cell : emptyCells) {
+            int r = cell[0], c = cell[1];
+            // Temporarily place human piece here
+            board.placePiece(r, c, GameBoard.HUMAN);
+            
+            // Check if AI has ANY move that would score
+            boolean aiCanScore = false;
+            for (int ar = 0; ar < GameBoard.SIZE && !aiCanScore; ar++) {
+                for (int ac = 0; ac < GameBoard.SIZE && !aiCanScore; ac++) {
+                    if (!board.isEmpty(ar, ac)) continue;
+                    board.placePiece(ar, ac, GameBoard.AI);
+                    int hCount = countConsecutiveOccupied(ar, ac, true);
+                    int vCount = countConsecutiveOccupied(ar, ac, false);
+                    boolean canScore = false;
+                    for (int len : validLengths) {
+                        if (hCount == len || vCount == len) {
+                            canScore = true;
+                            break;
+                        }
+                    }
+                    board.removePiece(ar, ac);
+                    if (canScore) {
+                        aiCanScore = true;
+                    }
+                }
+            }
+            
+            board.removePiece(r, c);
+            
+            // If AI cannot score at all, this is a safe cell
+            if (!aiCanScore) {
+                safeCells.add(new int[]{r, c});
+            }
+        }
+        
+        return safeCells;
+    }
+
+    private int countConsecutiveOccupied(int row, int col, boolean horizontal) {
+        int count = 1;
+        if (horizontal) {
+            for (int c = col - 1; c >= 0; c--) {
+                if (board.getCell(row, c) != GameBoard.EMPTY) count++;
+                else break;
+            }
+            for (int c = col + 1; c < GameBoard.SIZE; c++) {
+                if (board.getCell(row, c) != GameBoard.EMPTY) count++;
+                else break;
+            }
+        } else {
+            for (int r = row - 1; r >= 0; r--) {
+                if (board.getCell(r, col) != GameBoard.EMPTY) count++;
+                else break;
+            }
+            for (int r = row + 1; r < GameBoard.SIZE; r++) {
+                if (board.getCell(r, col) != GameBoard.EMPTY) count++;
+                else break;
+            }
+        }
+        return count;
     }
 
     /**
@@ -214,21 +444,17 @@ public class GamePanel extends JPanel {
             return;
         }
 
-        // Convert pixel coordinates to grid coordinates
         int col = (x - GRID_PADDING) / CELL_SIZE;
         int row = (y - GRID_PADDING) / CELL_SIZE;
 
-        // Check bounds
         if (row < 0 || row >= GameBoard.SIZE || col < 0 || col >= GameBoard.SIZE) {
             return;
         }
 
-        // Check if cell is empty
         if (!board.isEmpty(row, col)) {
             return;
         }
 
-        // Process human move
         processHumanMove(row, col);
     }
 
@@ -244,76 +470,74 @@ public class GamePanel extends JPanel {
     }
 
     /**
-     * Undo (悔棋): reset board and replay from clipboard
+     * Take a snapshot of current game state
      */
-    private void undoMove() {
-        // Read clipboard
-        Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
-        String text;
-        try {
-            text = (String) clipboard.getData(DataFlavor.stringFlavor);
-        } catch (Exception e) {
-            flashUndoButton();
-            statusLabel.setText("⚠️ 无法读取剪贴板");
-            return;
-        }
-
-        if (text == null || text.trim().isEmpty()) {
-            flashUndoButton();
-            statusLabel.setText("⚠️ 剪贴板为空，无法悔棋");
-            return;
-        }
-
-        text = text.trim();
-
-        // Validate format: e.g. "001h(0,0), 002a(1,1), 003h(2,2)"
-        if (!text.matches("\\d{3}[ha]\\(\\d+,\\d+\\)(?:, \\d{3}[ha]\\(\\d+,\\d+\\))*")) {
-            flashUndoButton();
-            statusLabel.setText("⚠️ 剪贴板内容格式不符，无法悔棋");
-            return;
-        }
-
-        // Parse moves
-        String[] entries = text.split(", ");
-
-        // Reset game completely (including move history)
-        if (aiTimer != null) aiTimer.stop();
-        aiThinking = false;
-        engine.reset();
-        board.clearMoveHistory();
-
-        // Replay each move using processMoveRaw (no recording)
-        for (String entry : entries) {
-            char playerChar = entry.charAt(3);
-            String coords = entry.substring(5, entry.length() - 1);
-            String[] parts = coords.split(",");
-            int r = Integer.parseInt(parts[0]);
-            int c = Integer.parseInt(parts[1]);
-            int player = (playerChar == 'h') ? GameBoard.HUMAN : GameBoard.AI;
-
-            GameEngine.MoveResult result = engine.processMoveRaw(r, c, player);
-            if (!result.valid) {
-                statusLabel.setText("⚠️ 悔棋失败：记录 " + entry + " 无法重放");
-                engine.reset();
-                board.clearMoveHistory();
-                refreshUI();
-                return;
-            }
-            board.recordMove(r, c, player);
-        }
-
-        // After replay, set turn to human
-        engine.setExtraTurn(false);
-        engine.setCurrentPlayer(GameBoard.HUMAN);
-        engine.setGameOver(false);
-        refreshUI();
-        statusLabel.setText("✅ 悔棋成功！已载入 " + entries.length + " 步记录，轮到人类");
+    private void takeSnapshot() {
+        snapshots.add(new GameSnapshot(board, engine));
     }
 
-    private void flashUndoButton() {
-        Color originalBg = undoButton.getBackground();
-        undoButton.setBackground(Color.RED);
-        Timer flashTimer = new Timer(500, e -> undoButton.setBackground(originalBg));
+    /**
+     * Go back one step (skip AI steps until human turn)
+     */
+    private void goBack() {
+        if (snapshots.isEmpty()) {
+            flashButton(backButton);
+            statusLabel.setText("⚠️ 已经是最初状态，无法后退");
+            return;
+        }
+
+        // Save current state to forwardSnapshots
+        forwardSnapshots.add(new GameSnapshot(board, engine));
+
+        // Restore previous snapshot
+        GameSnapshot snap = snapshots.remove(snapshots.size() - 1);
+        snap.restore(board, engine);
+
+        // Skip AI steps - keep going back until human's turn
+        while (engine.getCurrentPlayer() == GameBoard.AI && !snapshots.isEmpty()) {
+            forwardSnapshots.add(new GameSnapshot(board, engine));
+            snap = snapshots.remove(snapshots.size() - 1);
+            snap.restore(board, engine);
+        }
+
+        refreshUI();
+        statusLabel.setText("✅ 已后退到第 " + board.getMoveHistory().size() + " 步，轮到人类");
+        autoCopyHistory();
+    }
+
+    /**
+     * Go forward one step (skip AI steps until human turn)
+     */
+    private void goForward() {
+        if (forwardSnapshots.isEmpty()) {
+            flashButton(forwardButton);
+            statusLabel.setText("⚠️ 已经是最新状态，无法前进");
+            return;
+        }
+
+        // Save current state to snapshots
+        snapshots.add(new GameSnapshot(board, engine));
+
+        // Restore next forward snapshot
+        GameSnapshot snap = forwardSnapshots.remove(forwardSnapshots.size() - 1);
+        snap.restore(board, engine);
+
+        // Skip AI steps - keep going forward until human's turn
+        while (engine.getCurrentPlayer() == GameBoard.AI && !forwardSnapshots.isEmpty()) {
+            snapshots.add(new GameSnapshot(board, engine));
+            snap = forwardSnapshots.remove(forwardSnapshots.size() - 1);
+            snap.restore(board, engine);
+        }
+
+        refreshUI();
+        statusLabel.setText("✅ 已前进到第 " + board.getMoveHistory().size() + " 步，轮到人类");
+        autoCopyHistory();
+    }
+
+    private void flashButton(JButton btn) {
+        Color originalBg = btn.getBackground();
+        btn.setBackground(Color.RED);
+        Timer flashTimer = new Timer(500, e -> btn.setBackground(originalBg));
         flashTimer.setRepeats(false);
         flashTimer.start();
     }
@@ -325,12 +549,16 @@ public class GamePanel extends JPanel {
         // Auto-copy current history to clipboard before human moves
         autoCopyHistory();
 
+        // Take snapshot before the move
+        takeSnapshot();
+        // Clear forward snapshots since we're making a new move
+        forwardSnapshots.clear();
+
         GameEngine.MoveResult result = engine.processMove(row, col, GameBoard.HUMAN);
 
         if (!result.valid) return;
 
         refreshUI();
-
 
         if (result.gameEnded) {
             showGameOver();
@@ -339,12 +567,9 @@ public class GamePanel extends JPanel {
 
         if (result.scored) {
             statusLabel.setText("人类得分 +" + result.score + "！获得额外回合！");
-            // Human gets extra turn - wait for next click
         } else {
             statusLabel.setText("AI 思考中...");
-            // Switch to AI
             engine.switchPlayer();
-            // Trigger AI move with delay
             startAIMove();
         }
     }
@@ -373,10 +598,13 @@ public class GamePanel extends JPanel {
         int row = move[0];
         int col = move[1];
 
+        // Take snapshot before AI move
+        takeSnapshot();
+        forwardSnapshots.clear();
+
         GameEngine.MoveResult result = engine.processMove(row, col, GameBoard.AI);
 
         refreshUI();
-
 
         if (result.gameEnded) {
             showGameOver();
@@ -386,14 +614,17 @@ public class GamePanel extends JPanel {
 
         if (result.scored) {
             statusLabel.setText("AI 得分 +" + result.score + "！AI获得额外回合！");
-            // AI gets extra turn
             aiTimer = new Timer(500, e -> doAIMove());
             aiTimer.setRepeats(false);
             aiTimer.start();
         } else {
-            statusLabel.setText("轮到人类 (蓝色) - 请点击棋盘下子");
+            statusLabel.setText("轮到人类 (珊瑚红) - 请点击棋盘下子");
             engine.switchPlayer();
             aiThinking = false;
+            // Auto-copy history when it becomes human's turn
+            autoCopyHistory();
+            // Repaint immediately to show hints
+            repaint();
         }
     }
 
@@ -405,7 +636,6 @@ public class GamePanel extends JPanel {
         aiScoreLabel.setText("AI: " + engine.getAiScore() + " 分");
         repaint();
     }
-
 
     /**
      * Show game over dialog
@@ -437,8 +667,95 @@ public class GamePanel extends JPanel {
         }
         aiThinking = false;
         engine.reset();
+        snapshots.clear();
+        forwardSnapshots.clear();
         refreshUI();
-        statusLabel.setText("人类先手 (蓝色) - 请点击棋盘下子");
+        statusLabel.setText("人类先手 (珊瑚红) - 请点击棋盘下子");
+    }
 
+    /**
+     * GameSnapshot - stores complete game state for forward/backward navigation
+     */
+    private static class GameSnapshot {
+        private int[][] grid;
+        private List<GameBoard.RedLine> redLines;
+        private int humanScore;
+        private int aiScore;
+        private int currentPlayer;
+        private boolean gameOver;
+        private boolean extraTurn;
+        private List<String> moveHistory;
+        private int moveNumber;
+
+        public GameSnapshot(GameBoard board, GameEngine engine) {
+            // Deep copy grid
+            this.grid = new int[GameBoard.SIZE][GameBoard.SIZE];
+            for (int r = 0; r < GameBoard.SIZE; r++) {
+                for (int c = 0; c < GameBoard.SIZE; c++) {
+                    this.grid[r][c] = board.getCell(r, c);
+                }
+            }
+
+            // Deep copy red lines
+            this.redLines = new ArrayList<>();
+            for (GameBoard.RedLine line : board.getRedLines()) {
+                this.redLines.add(new GameBoard.RedLine(
+                    line.row, line.col, line.horizontal, line.length, line.owner
+                ));
+            }
+
+            this.humanScore = engine.getHumanScore();
+            this.aiScore = engine.getAiScore();
+            this.currentPlayer = engine.getCurrentPlayer();
+            this.gameOver = engine.isGameOver();
+            this.extraTurn = engine.hasExtraTurn();
+            this.moveHistory = new ArrayList<>(board.getMoveHistory());
+            this.moveNumber = moveHistory.size();
+        }
+
+        public void restore(GameBoard board, GameEngine engine) {
+            // Reset everything
+            engine.reset();
+            board.reset();
+            
+            // Restore grid directly
+            for (int r = 0; r < GameBoard.SIZE; r++) {
+                for (int c = 0; c < GameBoard.SIZE; c++) {
+                    if (grid[r][c] != GameBoard.EMPTY) {
+                        board.placePiece(r, c, grid[r][c]);
+                    }
+                }
+            }
+            
+            // Restore red lines
+            for (GameBoard.RedLine line : redLines) {
+                board.addRedLine(line);
+            }
+            
+            // Restore move history
+            for (String entry : moveHistory) {
+                board.recordMove(0, 0, GameBoard.HUMAN); // dummy - we'll fix moveNumber
+            }
+            // Clear and re-add properly
+            board.clearMoveHistory();
+            for (String entry : moveHistory) {
+                char playerChar = entry.charAt(3);
+                String coords = entry.substring(5, entry.length() - 1);
+                String[] parts = coords.split(",");
+                int r = Integer.parseInt(parts[0]);
+                int c = Integer.parseInt(parts[1]);
+                int player = (playerChar == 'h') ? GameBoard.HUMAN : GameBoard.AI;
+                board.recordMove(r, c, player);
+            }
+            
+            // Restore scores directly using setters
+            engine.setHumanScore(humanScore);
+            engine.setAiScore(aiScore);
+            
+            // Set state
+            engine.setCurrentPlayer(currentPlayer);
+            engine.setExtraTurn(extraTurn);
+            engine.setGameOver(gameOver);
+        }
     }
 }

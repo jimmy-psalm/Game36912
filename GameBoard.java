@@ -98,7 +98,6 @@ public class GameBoard {
 
     public void addRedLine(RedLine line) {
         // Remove any existing red line on the same row/col that overlaps
-        // (dynamic update: shorter line replaced by longer line)
         redLines.removeIf(existing -> existing.overlapsWith(line));
         redLines.add(line);
     }
@@ -119,38 +118,41 @@ public class GameBoard {
     }
 
     /**
-     * RedLine represents a scored line segment with a red line drawn through it
+     * RedLine represents a scored line segment with a colored line drawn through it
+     * owner field determines the color: HUMAN = coral red, AI = teal
      */
     public static class RedLine {
         public final int row;
         public final int col;
         public final boolean horizontal; // true = horizontal, false = vertical
         public final int length;
+        public final int owner; // HUMAN or AI - determines line color
 
         public RedLine(int row, int col, boolean horizontal, int length) {
+            this(row, col, horizontal, length, HUMAN); // default owner
+        }
+
+        public RedLine(int row, int col, boolean horizontal, int length, int owner) {
             this.row = row;
             this.col = col;
             this.horizontal = horizontal;
             this.length = length;
+            this.owner = owner;
         }
 
         /**
          * Check if this red line overlaps with another (same row/col, same orientation)
-         * Used for dynamic updating: longer line replaces shorter
          */
         public boolean overlapsWith(RedLine other) {
             if (this.horizontal != other.horizontal) return false;
             if (this.horizontal) {
-                // Both horizontal: same row?
                 if (this.row != other.row) return false;
-                // Check if segments overlap
                 int thisStart = this.col;
                 int thisEnd = this.col + this.length - 1;
                 int otherStart = other.col;
                 int otherEnd = other.col + other.length - 1;
                 return !(thisEnd < otherStart || thisStart > otherEnd);
             } else {
-                // Both vertical: same col?
                 if (this.col != other.col) return false;
                 int thisStart = this.row;
                 int thisEnd = this.row + this.length - 1;
@@ -162,7 +164,7 @@ public class GameBoard {
 
         @Override
         public String toString() {
-            return (horizontal ? "H" : "V") + "(" + row + "," + col + ") len=" + length;
+            return (horizontal ? "H" : "V") + "(" + row + "," + col + ") len=" + length + " owner=" + (owner == HUMAN ? "H" : "A");
         }
     }
 }

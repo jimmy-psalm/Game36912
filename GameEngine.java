@@ -64,6 +64,14 @@ public class GameEngine {
         this.gameOver = gameOver;
     }
 
+    public void setHumanScore(int score) {
+        this.humanScore = score;
+    }
+
+    public void setAiScore(int score) {
+        this.aiScore = score;
+    }
+
     /**
      * Process a move: place piece, check for scores, manage turns
      * Returns a MoveResult describing what happened
@@ -111,17 +119,17 @@ public class GameEngine {
                 aiScore += bestLine.score;
             }
 
-            // Add red line
+            // Add red line with owner (for color differentiation)
             board.addRedLine(new GameBoard.RedLine(
                 bestLine.startRow, bestLine.startCol,
-                bestLine.horizontal, bestLine.length
+                bestLine.horizontal, bestLine.length, player
             ));
 
             result.scored = true;
             result.score = bestLine.score;
             result.redLine = new GameBoard.RedLine(
                 bestLine.startRow, bestLine.startCol,
-                bestLine.horizontal, bestLine.length
+                bestLine.horizontal, bestLine.length, player
             );
 
             // Player gets an extra turn
@@ -157,7 +165,7 @@ public class GameEngine {
         // Check horizontal - count ANY occupied cells
         int hCount = countConsecutiveOccupied(row, col, true);
         for (int len : VALID_LENGTHS) {
-            if (hCount >= len) {
+            if (hCount == len) {
                 int startCol = findHorizontalStart(row, col);
                 results.add(new ScoredLine(row, startCol, row, startCol + len - 1, true, len, len));
             }
@@ -166,7 +174,7 @@ public class GameEngine {
         // Check vertical - count ANY occupied cells
         int vCount = countConsecutiveOccupied(row, col, false);
         for (int len : VALID_LENGTHS) {
-            if (vCount >= len) {
+            if (vCount == len) {
                 int startRow = findVerticalStart(row, col);
                 results.add(new ScoredLine(startRow, col, startRow + len - 1, col, false, len, len));
             }
