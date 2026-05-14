@@ -1345,45 +1345,41 @@ function flashStepButton(btn) {
 }
 
 // ---- Long press for repeat action (backward/forward) ----
-// Replace click with mousedown/mouseup for reliable repeat
+// Use pointer events for reliable cross-browser support
 function setupLongPress(btn, action) {
-    let timer = null;
-    let interval = null;
-    let isLongPress = false;
+    let pressTimer = null;
+    let repeatInterval = null;
+    let isRepeating = false;
     
-    function startRepeat(e) {
+    function startPress(e) {
         e.preventDefault();
-        isLongPress = false;
+        isRepeating = false;
+        // Execute once immediately
         action();
-        timer = setTimeout(() => {
-            isLongPress = true;
-            interval = setInterval(action, 150);
+        // After 300ms, start repeating
+        pressTimer = setTimeout(() => {
+            isRepeating = true;
+            repeatInterval = setInterval(action, 150);
         }, 300);
     }
     
-    function stopRepeat(e) {
+    function endPress(e) {
         e.preventDefault();
-        if (timer) { clearTimeout(timer); timer = null; }
-        if (interval) { clearInterval(interval); interval = null; }
+        if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
+        if (repeatInterval) { clearInterval(repeatInterval); repeatInterval = null; }
     }
     
-    function onClick(e) {
-        if (isLongPress) {
-            e.preventDefault();
-            e.stopPropagation();
-            isLongPress = false;
-        }
-    }
-    
-    btn.addEventListener('mousedown', startRepeat);
-    btn.addEventListener('mouseup', stopRepeat);
-    btn.addEventListener('mouseleave', stopRepeat);
-    btn.addEventListener('click', onClick);
+    // Use pointer events (works for both mouse and touch)
+    btn.addEventListener('pointerdown', startPress);
+    btn.addEventListener('pointerup', endPress);
+    btn.addEventListener('pointerleave', endPress);
+    btn.addEventListener('pointercancel', endPress);
+    // Prevent context menu on long press
+    btn.addEventListener('contextmenu', (e) => e.preventDefault());
+    // Prevent drag
     btn.addEventListener('dragstart', (e) => e.preventDefault());
 }
 
-// Remove old click listeners, use long press instead
-// backBtn & forwardBtn no longer use click events
 setupLongPress(backBtn, goBack);
 setupLongPress(forwardBtn, goForward);
 
