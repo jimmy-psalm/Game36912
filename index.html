@@ -178,6 +178,7 @@ canvas {
     display: flex;
     align-items: center;
     justify-content: center;
+    touch-action: none;
 }
 .group-btn:hover { background: #a89878; }
 .group-btn:active { background: #988868; }
@@ -1345,20 +1346,19 @@ function flashStepButton(btn) {
 }
 
 // ---- Long press for repeat action (backward/forward) ----
-// Use pointer events for reliable cross-browser support
+// Use pointer events with capture to prevent screen scrolling
 function setupLongPress(btn, action) {
     let pressTimer = null;
     let repeatInterval = null;
-    let isRepeating = false;
     
     function startPress(e) {
+        // Capture pointer to keep events on this element
+        btn.setPointerCapture(e.pointerId);
         e.preventDefault();
-        isRepeating = false;
         // Execute once immediately
         action();
         // After 300ms, start repeating
         pressTimer = setTimeout(() => {
-            isRepeating = true;
             repeatInterval = setInterval(action, 150);
         }, 300);
     }
@@ -1369,7 +1369,7 @@ function setupLongPress(btn, action) {
         if (repeatInterval) { clearInterval(repeatInterval); repeatInterval = null; }
     }
     
-    // Use pointer events (works for both mouse and touch)
+    // Use pointer events with capture
     btn.addEventListener('pointerdown', startPress);
     btn.addEventListener('pointerup', endPress);
     btn.addEventListener('pointerleave', endPress);
