@@ -1350,16 +1350,22 @@ function flashStepButton(btn) {
 function setupLongPress(btn, action) {
     let pressTimer = null;
     let repeatInterval = null;
+    let isRepeating = false;
     
     function startPress(e) {
-        // Capture pointer to keep events on this element
-        btn.setPointerCapture(e.pointerId);
         e.preventDefault();
+        // Capture pointer to keep events on this element
+        try { btn.setPointerCapture(e.pointerId); } catch(ex) {}
+        isRepeating = false;
         // Execute once immediately
         action();
         // After 300ms, start repeating
         pressTimer = setTimeout(() => {
-            repeatInterval = setInterval(action, 150);
+            isRepeating = true;
+            repeatInterval = setInterval(() => {
+                // During repeat, only update state, skip DOM status updates to prevent layout shifts
+                action();
+            }, 150);
         }, 300);
     }
     
@@ -1367,17 +1373,20 @@ function setupLongPress(btn, action) {
         e.preventDefault();
         if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
         if (repeatInterval) { clearInterval(repeatInterval); repeatInterval = null; }
+        isRepeating = false;
     }
     
-    // Use pointer events with capture
-    btn.addEventListener('pointerdown', startPress);
-    btn.addEventListener('pointerup', endPress);
-    btn.addEventListener('pointerleave', endPress);
-    btn.addEventListener('pointercancel', endPress);
+    // Use pointer events with passive:false to ensure preventDefault works
+    btn.addEventListener('pointerdown', startPress, { passive: false });
+    btn.addEventListener('pointerup', endPress, { passive: false });
+    btn.addEventListener('pointerleave', endPress, { passive: false });
+    btn.addEventListener('pointercancel', endPress, { passive: false });
     // Prevent context menu on long press
     btn.addEventListener('contextmenu', (e) => e.preventDefault());
     // Prevent drag
     btn.addEventListener('dragstart', (e) => e.preventDefault());
+    // Prevent selectstart (text selection)
+    btn.addEventListener('selectstart', (e) => e.preventDefault());
 }
 
 setupLongPress(backBtn, goBack);
