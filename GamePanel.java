@@ -139,12 +139,21 @@ public class GamePanel extends JPanel {
         loadButton.setFocusPainted(false);
         loadButton.addActionListener(e -> loadFromClipboard());
 
+        // Board size button (cyclic: 144 → 81 → 36 → 144)
+        JButton sizeButton = new JButton("144");
+        sizeButton.setFont(new Font("Microsoft YaHei", Font.BOLD, 14));
+        sizeButton.setBackground(new Color(138, 122, 106));
+        sizeButton.setForeground(Color.WHITE);
+        sizeButton.setFocusPainted(false);
+        sizeButton.addActionListener(e -> changeBoardSize(sizeButton));
+
         bottomPanel.add(humanScoreLabel);
         bottomPanel.add(aiScoreLabel);
         bottomPanel.add(resetButton);
         bottomPanel.add(backButton);
         bottomPanel.add(forwardButton);
         bottomPanel.add(loadButton);
+        bottomPanel.add(sizeButton);
         bottomPanel.add(basicBtn);
         bottomPanel.add(advanceBtn);
 
@@ -569,6 +578,54 @@ public class GamePanel extends JPanel {
         refreshUI();
         statusLabel.setText("✅ 已载入 " + matches.size() + " 步记录，请使用 ← → 回放");
         autoCopyHistory();
+    }
+
+    /**
+     * Change board size cyclically: 144 → 81 → 36 → 144
+     */
+    private void changeBoardSize(JButton sizeButton) {
+        // Disable during game (if any piece has been placed)
+        if (!board.getMoveHistory().isEmpty()) {
+            flashButton(sizeButton);
+            statusLabel.setText("⚠️ 游戏进行中无法切换棋盘大小，请先重置");
+            return;
+        }
+        
+        String currentText = sizeButton.getText();
+        int newSize;
+        if (currentText.equals("144")) {
+            sizeButton.setText("81");
+            newSize = 9;
+        } else if (currentText.equals("81")) {
+            sizeButton.setText("36");
+            newSize = 6;
+        } else {
+            sizeButton.setText("144");
+            newSize = 12;
+        }
+        
+        // Update board size
+        board.setSize(newSize);
+        engine.reset();
+        snapshots.clear();
+        forwardSnapshots.clear();
+        
+        // Update board panel size
+        Component[] components = getComponents();
+        for (Component comp : components) {
+            if (comp instanceof BoardPanel) {
+                BoardPanel bp = (BoardPanel) comp;
+                bp.setPreferredSize(new Dimension(
+                    GRID_PADDING * 2 + CELL_SIZE * newSize,
+                    GRID_PADDING * 2 + CELL_SIZE * newSize
+                ));
+                bp.revalidate();
+                break;
+            }
+        }
+        
+        refreshUI();
+        statusLabel.setText("棋盘已切换为 " + newSize + "x" + newSize + " (" + sizeButton.getText() + " 格)");
     }
 
     /**

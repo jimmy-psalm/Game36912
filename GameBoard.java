@@ -6,7 +6,7 @@ import java.util.List;
  * Stores piece positions and red line segments
  */
 public class GameBoard {
-    public static final int SIZE = 12;
+    public static int SIZE = 12;
     public static final int EMPTY = 0;
     public static final int HUMAN = 1;
     public static final int AI = 2;
@@ -20,6 +20,17 @@ public class GameBoard {
         grid = new int[SIZE][SIZE];
         redLines = new ArrayList<>();
         moveHistory = new ArrayList<>();
+        moveNumber = 0;
+    }
+
+    /**
+     * Change board size (only valid when no pieces placed)
+     */
+    public void setSize(int newSize) {
+        SIZE = newSize;
+        grid = new int[SIZE][SIZE];
+        redLines.clear();
+        moveHistory.clear();
         moveNumber = 0;
     }
 
