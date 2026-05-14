@@ -81,94 +81,92 @@ public class GamePanel extends JPanel {
         ));
         add(boardPanel, BorderLayout.CENTER);
 
-        // Bottom panel: scores and buttons
-        JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 10));
-        bottomPanel.setBackground(BG_COLOR);
-
+        // Score area + buttons (combined in SOUTH)
+        JPanel southPanel = new JPanel();
+        southPanel.setLayout(new BoxLayout(southPanel, BoxLayout.Y_AXIS));
+        southPanel.setBackground(BG_COLOR);
+        
+        // Score area (between board and buttons)
+        JPanel scoreArea = new JPanel(new FlowLayout(FlowLayout.CENTER, 8, 4));
+        scoreArea.setBackground(BG_COLOR);
+        
         humanScoreLabel = new JLabel("人类: 0 分");
-        humanScoreLabel.setFont(new Font("Microsoft YaHei", Font.BOLD, 16));
+        humanScoreLabel.setFont(new Font("Microsoft YaHei", Font.BOLD, 28));
         humanScoreLabel.setForeground(HUMAN_COLOR);
-
+        
         aiScoreLabel = new JLabel("AI: 0 分");
-        aiScoreLabel.setFont(new Font("Microsoft YaHei", Font.BOLD, 16));
+        aiScoreLabel.setFont(new Font("Microsoft YaHei", Font.BOLD, 28));
         aiScoreLabel.setForeground(AI_COLOR);
-
-
-        // Mode toggle button (single button: basic/advance toggle)
-        JButton modeToggleBtn = new JButton("基础");
-        modeToggleBtn.setFont(new Font("Microsoft YaHei", Font.BOLD, 14));
-        modeToggleBtn.setBackground(new Color(90, 138, 181));
-        modeToggleBtn.setForeground(Color.WHITE);
-        modeToggleBtn.setFocusPainted(false);
-        modeToggleBtn.addActionListener(e -> toggleMode(modeToggleBtn));
-
-        JButton loadButton = new JButton("载入");
-        loadButton.setFont(new Font("Microsoft YaHei", Font.BOLD, 14));
-        loadButton.setBackground(new Color(122, 154, 106));
-        loadButton.setForeground(Color.WHITE);
-        loadButton.setFocusPainted(false);
-        loadButton.addActionListener(e -> loadFromClipboard());
-
-        // Board size button (cyclic: 144 → 81 → 36 → 144)
-        JButton sizeButton = new JButton("144");
-        sizeButton.setFont(new Font("Microsoft YaHei", Font.BOLD, 14));
-        sizeButton.setBackground(new Color(138, 122, 106));
-        sizeButton.setForeground(Color.WHITE);
-        sizeButton.setFocusPainted(false);
-        sizeButton.addActionListener(e -> changeBoardSize(sizeButton));
-
-        // Use a GridLayout-like approach: two rows
-        bottomPanel.setLayout(new BoxLayout(bottomPanel, BoxLayout.Y_AXIS));
         
-        JPanel row1 = new JPanel(new FlowLayout(FlowLayout.CENTER, 6, 2));
-        row1.setBackground(BG_COLOR);
-        JPanel row2 = new JPanel(new FlowLayout(FlowLayout.CENTER, 6, 2));
-        row2.setBackground(BG_COLOR);
-        
-        // Row 1: copy, load, -+
-        JButton copyBtn = new JButton("复制记录");
-        copyBtn.setFont(new Font("Microsoft YaHei", Font.BOLD, 14));
-        copyBtn.setBackground(new Color(90, 138, 181));
-        copyBtn.setForeground(Color.WHITE);
-        copyBtn.setFocusPainted(false);
-        copyBtn.addActionListener(e -> copyHistory());
+        // Zoom stack (+ on top, - below) beside score area
+        JButton zoomInBtn = new JButton("+");
+        zoomInBtn.setFont(new Font("Microsoft YaHei", Font.BOLD, 16));
+        zoomInBtn.setBackground(new Color(184, 168, 136));
+        zoomInBtn.setForeground(new Color(61, 43, 26));
+        zoomInBtn.setFocusPainted(false);
+        zoomInBtn.setPreferredSize(new Dimension(44, 28));
+        zoomInBtn.addActionListener(e -> resizeBoard(1.1));
         
         JButton zoomOutBtn = new JButton("−");
         zoomOutBtn.setFont(new Font("Microsoft YaHei", Font.BOLD, 16));
         zoomOutBtn.setBackground(new Color(184, 168, 136));
         zoomOutBtn.setForeground(new Color(61, 43, 26));
         zoomOutBtn.setFocusPainted(false);
+        zoomOutBtn.setPreferredSize(new Dimension(44, 28));
         zoomOutBtn.addActionListener(e -> resizeBoard(1 / 1.1));
         
-        JButton zoomInBtn = new JButton("+");
-        zoomInBtn.setFont(new Font("Microsoft YaHei", Font.BOLD, 16));
-        zoomInBtn.setBackground(new Color(184, 168, 136));
-        zoomInBtn.setForeground(new Color(61, 43, 26));
-        zoomInBtn.setFocusPainted(false);
-        zoomInBtn.addActionListener(e -> resizeBoard(1.1));
+        JPanel zoomStack = new JPanel();
+        zoomStack.setLayout(new BoxLayout(zoomStack, BoxLayout.Y_AXIS));
+        zoomStack.setBackground(BG_COLOR);
+        zoomStack.add(zoomInBtn);
+        zoomStack.add(Box.createVerticalStrut(2));
+        zoomStack.add(zoomOutBtn);
         
-        JPanel zoomGroup = new JPanel(new FlowLayout(FlowLayout.CENTER, 2, 0));
-        zoomGroup.setBackground(BG_COLOR);
-        zoomGroup.add(zoomOutBtn);
-        zoomGroup.add(zoomInBtn);
+        scoreArea.add(humanScoreLabel);
+        scoreArea.add(aiScoreLabel);
+        scoreArea.add(zoomStack);
         
-        row1.add(copyBtn);
-        row1.add(loadButton);
-        row1.add(zoomGroup);
+        southPanel.add(scoreArea);
         
-        // Row 2: <>, 144, basic/advance, start
+        // Bottom panel: buttons
+        JPanel bottomPanel = new JPanel();
+        bottomPanel.setLayout(new BoxLayout(bottomPanel, BoxLayout.Y_AXIS));
+        bottomPanel.setBackground(BG_COLOR);
+        
+        // Row 1: copy, load, <>, 144, basic/advance, start
+        JPanel row1 = new JPanel(new FlowLayout(FlowLayout.CENTER, 6, 4));
+        row1.setBackground(BG_COLOR);
+        
+        JButton copyBtn = new JButton("复制记录");
+        copyBtn.setFont(new Font("Microsoft YaHei", Font.BOLD, 16));
+        copyBtn.setBackground(new Color(90, 138, 181));
+        copyBtn.setForeground(Color.WHITE);
+        copyBtn.setFocusPainted(false);
+        copyBtn.setPreferredSize(new Dimension(120, 44));
+        copyBtn.addActionListener(e -> copyHistory());
+        
+        JButton loadButton = new JButton("载入");
+        loadButton.setFont(new Font("Microsoft YaHei", Font.BOLD, 16));
+        loadButton.setBackground(new Color(122, 154, 106));
+        loadButton.setForeground(Color.WHITE);
+        loadButton.setFocusPainted(false);
+        loadButton.setPreferredSize(new Dimension(80, 44));
+        loadButton.addActionListener(e -> loadFromClipboard());
+        
         backButton = new JButton("←");
-        backButton.setFont(new Font("Microsoft YaHei", Font.BOLD, 16));
+        backButton.setFont(new Font("Microsoft YaHei", Font.BOLD, 18));
         backButton.setBackground(new Color(184, 168, 136));
         backButton.setForeground(new Color(61, 43, 26));
         backButton.setFocusPainted(false);
+        backButton.setPreferredSize(new Dimension(44, 44));
         backButton.addActionListener(e -> goBack());
         
         forwardButton = new JButton("→");
-        forwardButton.setFont(new Font("Microsoft YaHei", Font.BOLD, 16));
+        forwardButton.setFont(new Font("Microsoft YaHei", Font.BOLD, 18));
         forwardButton.setBackground(new Color(184, 168, 136));
         forwardButton.setForeground(new Color(61, 43, 26));
         forwardButton.setFocusPainted(false);
+        forwardButton.setPreferredSize(new Dimension(44, 44));
         forwardButton.addActionListener(e -> goForward());
         
         JPanel stepGroup = new JPanel(new FlowLayout(FlowLayout.CENTER, 2, 0));
@@ -176,26 +174,41 @@ public class GamePanel extends JPanel {
         stepGroup.add(backButton);
         stepGroup.add(forwardButton);
         
+        JButton sizeButton = new JButton("144");
+        sizeButton.setFont(new Font("Microsoft YaHei", Font.BOLD, 16));
+        sizeButton.setBackground(new Color(138, 122, 106));
+        sizeButton.setForeground(Color.WHITE);
+        sizeButton.setFocusPainted(false);
+        sizeButton.setPreferredSize(new Dimension(60, 44));
+        sizeButton.addActionListener(e -> changeBoardSize(sizeButton));
+        
+        JButton modeToggleBtn = new JButton("基础");
+        modeToggleBtn.setFont(new Font("Microsoft YaHei", Font.BOLD, 16));
+        modeToggleBtn.setBackground(new Color(90, 138, 181));
+        modeToggleBtn.setForeground(Color.WHITE);
+        modeToggleBtn.setFocusPainted(false);
+        modeToggleBtn.setPreferredSize(new Dimension(80, 44));
+        modeToggleBtn.addActionListener(e -> toggleMode(modeToggleBtn));
+        
         JButton startBtn = new JButton("开始");
-        startBtn.setFont(new Font("Microsoft YaHei", Font.BOLD, 14));
+        startBtn.setFont(new Font("Microsoft YaHei", Font.BOLD, 16));
         startBtn.setBackground(new Color(200, 180, 150));
         startBtn.setForeground(new Color(61, 43, 26));
         startBtn.setFocusPainted(false);
+        startBtn.setPreferredSize(new Dimension(80, 44));
         startBtn.addActionListener(e -> resetGame());
         
-        row2.add(stepGroup);
-        row2.add(sizeButton);
-        row2.add(modeToggleBtn);
-        row2.add(startBtn);
+        row1.add(copyBtn);
+        row1.add(loadButton);
+        row1.add(stepGroup);
+        row1.add(sizeButton);
+        row1.add(modeToggleBtn);
+        row1.add(startBtn);
         
         bottomPanel.add(row1);
-        bottomPanel.add(row2);
+        southPanel.add(bottomPanel);
         
-        // Also add score labels above the buttons
-        bottomPanel.add(humanScoreLabel);
-        bottomPanel.add(aiScoreLabel);
-
-        add(bottomPanel, BorderLayout.SOUTH);
+        add(southPanel, BorderLayout.SOUTH);
     }
 
     /**

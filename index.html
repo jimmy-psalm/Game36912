@@ -55,35 +55,60 @@ canvas {
     box-shadow: inset 0 0 0 1px #b8a080;
     touch-action: manipulation;
 }
+.score-area {
+    display: flex;
+    justify-content: center;
+    align-items: stretch;
+    gap: 8px;
+    margin-top: 6px;
+}
 .score-panel {
     display: flex;
-    gap: 8px;
-    min-width: 100px;
+    gap: 6px;
+    flex: 1;
+    max-width: 300px;
 }
 .score-card {
     background: #f5ede0;
     border-radius: 10px;
-    padding: 6px 10px;
+    padding: 4px 8px;
     box-shadow: 0 2px 6px rgba(0,0,0,0.08);
     text-align: center;
     flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
 }
 .score-card .player-name {
-    font-size: 12px;
+    font-size: 11px;
     font-weight: bold;
-    margin-bottom: 1px;
+    margin-bottom: 0;
+    line-height: 1.2;
 }
 .score-card .player-name.human { color: #ff6b6b; }
 .score-card .player-name.ai { color: #4ecdc4; }
 .score-card .score-value {
-    font-size: 24px;
+    font-size: 28px;
     font-weight: bold;
+    line-height: 1.1;
 }
 .score-card .score-value.human { color: #ff6b6b; }
 .score-card .score-value.ai { color: #4ecdc4; }
 .score-card .score-label {
-    font-size: 11px;
+    font-size: 10px;
     color: #8a7a6a;
+    line-height: 1;
+}
+.zoom-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.zoom-stack button {
+    flex: 1;
+    min-width: 36px;
+    padding: 2px 10px !important;
+    font-size: 16px !important;
 }
 .info-panel {
     display: flex;
@@ -110,10 +135,14 @@ canvas {
     font-weight: bold;
     padding: 5px 12px !important;
     min-width: 36px;
+    height: 44px;
     border: none;
     border-radius: 8px;
     cursor: pointer;
     transition: background 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 .group-btn:hover { background: #a89878; }
 .group-btn:active { background: #988868; }
@@ -122,13 +151,18 @@ canvas {
     transition: background 0s;
 }
 .info-panel button {
-    font-size: 13px;
+    font-size: 16px;
     font-weight: bold;
-    padding: 5px 14px;
+    padding: 8px 16px;
     border: none;
     border-radius: 8px;
     cursor: pointer;
     transition: background 0.2s;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
 }
 .copy-btn {
     background: #5a8ab5;
@@ -152,7 +186,7 @@ canvas {
 .size-btn {
     background: #8a7a6a;
     color: white;
-    font-size: 14px !important;
+    font-size: 16px !important;
     font-weight: bold;
     padding: 5px 14px;
     border: none;
@@ -160,6 +194,10 @@ canvas {
     cursor: pointer;
     transition: background 0.2s;
     min-width: 48px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 .size-btn:hover { background: #7a6a5a; }
 .size-btn:active { background: #6a5a4a; }
@@ -168,7 +206,7 @@ canvas {
 .mode-toggle-btn {
     background: #5a8ab5;
     color: white;
-    font-size: 13px;
+    font-size: 16px;
     font-weight: bold;
     padding: 5px 14px;
     border: none;
@@ -176,6 +214,10 @@ canvas {
     cursor: pointer;
     transition: background 0.2s;
     min-width: 48px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 .mode-toggle-btn:hover { opacity: 0.85; }
 .mode-toggle-btn:active { opacity: 0.7; }
@@ -223,6 +265,8 @@ canvas {
     <div class="status-bar" id="statusBar">人類先手 (珊瑚紅) — 請點擊棋盤下子</div>
     <div class="board-wrapper">
         <canvas id="boardCanvas"></canvas>
+    </div>
+    <div class="score-area">
         <div class="score-panel" id="scorePanel">
             <div class="score-card">
                 <div class="player-name human">● 人類</div>
@@ -235,17 +279,15 @@ canvas {
                 <div class="score-label">分</div>
             </div>
         </div>
+        <div class="zoom-stack">
+            <button class="group-btn" id="zoomInBtn">+</button>
+            <button class="group-btn" id="zoomOutBtn">−</button>
+        </div>
     </div>
     <div class="info-panel">
         <div class="btn-row">
             <button class="copy-btn" id="copyBtn">複製記錄</button>
             <button class="load-btn" id="loadBtn">載入</button>
-            <div class="btn-group">
-                <button class="group-btn" id="zoomOutBtn">−</button>
-                <button class="group-btn" id="zoomInBtn">+</button>
-            </div>
-        </div>
-        <div class="btn-row">
             <div class="btn-group">
                 <button class="group-btn" id="backBtn">←</button>
                 <button class="group-btn" id="forwardBtn">→</button>
@@ -531,22 +573,6 @@ function autoFitBoard() {
     canvas.width = PAD * 2 + CELL * SIZE;
     canvas.height = PAD * 2 + CELL * SIZE;
 
-    const baseFont = 13;
-    const newFont = Math.round(baseFont * Math.sqrt(zoomLevel));
-    document.querySelectorAll('.info-panel button').forEach(btn => {
-        btn.style.fontSize = newFont + 'px';
-    });
-    document.querySelectorAll('.score-card .score-value').forEach(el => {
-        el.style.fontSize = Math.round(24 * Math.sqrt(zoomLevel)) + 'px';
-    });
-    document.querySelectorAll('.score-card .player-name').forEach(el => {
-        el.style.fontSize = Math.round(12 * Math.sqrt(zoomLevel)) + 'px';
-    });
-    document.querySelectorAll('.score-card .score-label').forEach(el => {
-        el.style.fontSize = Math.round(11 * Math.sqrt(zoomLevel)) + 'px';
-    });
-    statusBar.style.fontSize = Math.round(13 * Math.sqrt(zoomLevel)) + 'px';
-    turnIndicator.style.fontSize = Math.round(12 * Math.sqrt(zoomLevel)) + 'px';
     drawBoard();
 }
 
@@ -559,22 +585,6 @@ function resizeBoard(factor) {
     RADIUS = Math.round(20 * zoomLevel);
     canvas.width = PAD * 2 + CELL * SIZE;
     canvas.height = PAD * 2 + CELL * SIZE;
-    const baseFont = 13;
-    const newFont = Math.round(baseFont * Math.sqrt(zoomLevel));
-    document.querySelectorAll('.info-panel button').forEach(btn => {
-        btn.style.fontSize = newFont + 'px';
-    });
-    document.querySelectorAll('.score-card .score-value').forEach(el => {
-        el.style.fontSize = Math.round(24 * Math.sqrt(zoomLevel)) + 'px';
-    });
-    document.querySelectorAll('.score-card .player-name').forEach(el => {
-        el.style.fontSize = Math.round(12 * Math.sqrt(zoomLevel)) + 'px';
-    });
-    document.querySelectorAll('.score-card .score-label').forEach(el => {
-        el.style.fontSize = Math.round(11 * Math.sqrt(zoomLevel)) + 'px';
-    });
-    statusBar.style.fontSize = Math.round(13 * Math.sqrt(zoomLevel)) + 'px';
-    turnIndicator.style.fontSize = Math.round(12 * Math.sqrt(zoomLevel)) + 'px';
     drawBoard();
 }
 
