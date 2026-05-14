@@ -333,7 +333,7 @@ canvas {
                 <button class="group-btn" id="backBtn">←</button>
                 <button class="group-btn" id="forwardBtn">→</button>
             </div>
-            <button class="size-btn" id="sizeBtn">144</button>
+            <button class="size-btn" id="sizeBtn">12x12</button>
             <button class="mode-toggle-btn" id="modeToggleBtn">基礎</button>
             <button class="start-btn" id="resetBtn">開始</button>
         </div>
@@ -632,9 +632,9 @@ function resizeBoard(factor) {
 document.getElementById('zoomInBtn').addEventListener('click', () => resizeBoard(1.1));
 document.getElementById('zoomOutBtn').addEventListener('click', () => resizeBoard(1 / 1.1));
 
-// ---- Board size cycling (144 → 81 → 36 → 144) ----
+// ---- Board size cycling (12x12 → 9x9 → 6x6 → 12x12) ----
 const sizeBtn = document.getElementById('sizeBtn');
-const sizeOptions = [144, 81, 36];
+const sizeOptions = ['12x12', '9x9', '6x6'];
 let sizeIndex = 0;
 
 function changeBoardSize() {
@@ -647,18 +647,18 @@ function changeBoardSize() {
     }
     
     sizeIndex = (sizeIndex + 1) % sizeOptions.length;
-    const newSize = sizeOptions[sizeIndex];
-    sizeBtn.textContent = newSize;
+    const newSizeLabel = sizeOptions[sizeIndex];
+    sizeBtn.textContent = newSizeLabel;
     
-    // Update SIZE based on button text
-    if (newSize === 144) SIZE = 12;
-    else if (newSize === 81) SIZE = 9;
-    else if (newSize === 36) SIZE = 6;
+    // Update SIZE based on button label
+    if (newSizeLabel === '12x12') SIZE = 12;
+    else if (newSizeLabel === '9x9') SIZE = 9;
+    else if (newSizeLabel === '6x6') SIZE = 6;
     
     // Reset game with new size
     resetGame();
     autoFitBoard();
-    setStatus('棋盤已切換為 ' + SIZE + 'x' + SIZE + ' (' + newSize + ' 格)');
+    setStatus('棋盤已切換為 ' + SIZE + 'x' + SIZE + ' (' + newSizeLabel + ')');
 }
 
 sizeBtn.addEventListener('click', changeBoardSize);
