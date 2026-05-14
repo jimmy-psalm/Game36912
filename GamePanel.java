@@ -90,13 +90,11 @@ public class GamePanel extends JPanel {
         JPanel scoreArea = new JPanel(new FlowLayout(FlowLayout.CENTER, 8, 4));
         scoreArea.setBackground(BG_COLOR);
         
-        humanScoreLabel = new JLabel("人类: 0 分");
-        humanScoreLabel.setFont(new Font("Microsoft YaHei", Font.BOLD, 28));
-        humanScoreLabel.setForeground(HUMAN_COLOR);
+        humanScoreLabel = new JLabel("<html><table cellpadding=0 cellspacing=0><tr><td style='background:#ff6b6b;color:white;font-weight:bold;font-size:14px;padding:4px 6px;text-align:center;vertical-align:middle;border-radius:8px 0 0 8px;'>人<br>类</td><td style='padding:4px 8px;text-align:center;vertical-align:middle;'><span style='font-size:28px;font-weight:bold;color:#ff6b6b;'>0</span><br><span style='font-size:10px;color:#8a7a6a;'>分</span></td></tr></table></html>");
+        humanScoreLabel.setFont(new Font("Microsoft YaHei", Font.PLAIN, 12));
         
-        aiScoreLabel = new JLabel("AI: 0 分");
-        aiScoreLabel.setFont(new Font("Microsoft YaHei", Font.BOLD, 28));
-        aiScoreLabel.setForeground(AI_COLOR);
+        aiScoreLabel = new JLabel("<html><table cellpadding=0 cellspacing=0><tr><td style='background:#4ecdc4;color:white;font-weight:bold;font-size:14px;padding:4px 6px;text-align:center;vertical-align:middle;border-radius:8px 0 0 8px;'>电<br>脑</td><td style='padding:4px 8px;text-align:center;vertical-align:middle;'><span style='font-size:28px;font-weight:bold;color:#4ecdc4;'>0</span><br><span style='font-size:10px;color:#8a7a6a;'>分</span></td></tr></table></html>");
+        aiScoreLabel.setFont(new Font("Microsoft YaHei", Font.PLAIN, 12));
         
         // Zoom stack (+ on top, - below) beside score area
         JButton zoomInBtn = new JButton("+");
@@ -857,13 +855,15 @@ public class GamePanel extends JPanel {
      * Update UI components
      */
     private void refreshUI() {
-        humanScoreLabel.setText("人类: " + engine.getHumanScore() + " 分");
-        aiScoreLabel.setText("AI: " + engine.getAiScore() + " 分");
+        int hScore = engine.getHumanScore();
+        int aScore = engine.getAiScore();
+        humanScoreLabel.setText("<html><table cellpadding=0 cellspacing=0><tr><td style='background:#ff6b6b;color:white;font-weight:bold;font-size:14px;padding:4px 6px;text-align:center;vertical-align:middle;border-radius:8px 0 0 8px;'>人<br>类</td><td style='padding:4px 8px;text-align:center;vertical-align:middle;'><span style='font-size:28px;font-weight:bold;color:#ff6b6b;'>" + hScore + "</span><br><span style='font-size:10px;color:#8a7a6a;'>分</span></td></tr></table></html>");
+        aiScoreLabel.setText("<html><table cellpadding=0 cellspacing=0><tr><td style='background:#4ecdc4;color:white;font-weight:bold;font-size:14px;padding:4px 6px;text-align:center;vertical-align:middle;border-radius:8px 0 0 8px;'>电<br>脑</td><td style='padding:4px 8px;text-align:center;vertical-align:middle;'><span style='font-size:28px;font-weight:bold;color:#4ecdc4;'>" + aScore + "</span><br><span style='font-size:10px;color:#8a7a6a;'>分</span></td></tr></table></html>");
         repaint();
     }
 
     /**
-     * Show game over - display Win/Loss in score area instead of popup
+     * Show game over - display result in score area instead of popup
      */
     private void showGameOver() {
         statusLabel.setText("游戏结束！");
@@ -872,17 +872,26 @@ public class GamePanel extends JPanel {
         int hScore = engine.getHumanScore();
         int aScore = engine.getAiScore();
         
-        // Update score labels to show result
+        String hResult, aResult, hColor, aColor;
         if (winner == GameBoard.HUMAN) {
-            humanScoreLabel.setText("<html>人类: " + hScore + " 分<br><span style='color:#2ecc71;font-size:28px;font-weight:bold;'>赢 😊</span></html>");
-            aiScoreLabel.setText("<html>AI: " + aScore + " 分<br><span style='color:#e74c3c;font-size:28px;font-weight:bold;'>输 😢</span></html>");
+            hResult = "赢 😊";
+            aResult = "输 🙁";
+            hColor = "#2ecc71";
+            aColor = "#e74c3c";
         } else if (winner == GameBoard.AI) {
-            humanScoreLabel.setText("<html>人类: " + hScore + " 分<br><span style='color:#e74c3c;font-size:28px;font-weight:bold;'>输 😢</span></html>");
-            aiScoreLabel.setText("<html>AI: " + aScore + " 分<br><span style='color:#2ecc71;font-size:28px;font-weight:bold;'>赢 😊</span></html>");
+            hResult = "输 🙁";
+            aResult = "赢 😊";
+            hColor = "#e74c3c";
+            aColor = "#2ecc71";
         } else {
-            humanScoreLabel.setText("<html>人类: " + hScore + " 分<br><span style='color:#f39c12;font-size:28px;font-weight:bold;'>平局</span></html>");
-            aiScoreLabel.setText("<html>AI: " + aScore + " 分<br><span style='color:#f39c12;font-size:28px;font-weight:bold;'>平局</span></html>");
+            hResult = "平局";
+            aResult = "平局";
+            hColor = "#f39c12";
+            aColor = "#f39c12";
         }
+        
+        humanScoreLabel.setText("<html><table cellpadding=0 cellspacing=0><tr><td style='background:#ff6b6b;color:white;font-weight:bold;font-size:14px;padding:4px 6px;text-align:center;vertical-align:middle;border-radius:8px 0 0 8px;'>人<br>类</td><td style='padding:4px 8px;text-align:center;vertical-align:middle;'><span style='font-size:14px;font-weight:bold;color:#ff6b6b;'>" + hScore + "</span><br><span style='font-size:10px;color:#8a7a6a;'>分</span><br><span style='font-size:28px;font-weight:bold;color:" + hColor + ";'>" + hResult + "</span></td></tr></table></html>");
+        aiScoreLabel.setText("<html><table cellpadding=0 cellspacing=0><tr><td style='background:#4ecdc4;color:white;font-weight:bold;font-size:14px;padding:4px 6px;text-align:center;vertical-align:middle;border-radius:8px 0 0 8px;'>电<br>脑</td><td style='padding:4px 8px;text-align:center;vertical-align:middle;'><span style='font-size:14px;font-weight:bold;color:#4ecdc4;'>" + aScore + "</span><br><span style='font-size:10px;color:#8a7a6a;'>分</span><br><span style='font-size:28px;font-weight:bold;color:" + aColor + ";'>" + aResult + "</span></td></tr></table></html>");
     }
 
     /**

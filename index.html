@@ -71,22 +71,40 @@ canvas {
 .score-card {
     background: #f5ede0;
     border-radius: 10px;
-    padding: 4px 8px;
     box-shadow: 0 2px 6px rgba(0,0,0,0.08);
-    text-align: center;
+    flex: 1;
+    display: flex;
+    flex-direction: row;
+    overflow: hidden;
+    min-height: 70px;
+}
+.score-card .card-banner {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    width: 36px;
+    min-width: 36px;
+    padding: 4px 0;
+    font-size: 14px;
+    font-weight: bold;
+    color: white;
+    line-height: 1.3;
+}
+.score-card .card-banner.human-banner {
+    background: #ff6b6b;
+}
+.score-card .card-banner.ai-banner {
+    background: #4ecdc4;
+}
+.score-card .card-content {
     flex: 1;
     display: flex;
     flex-direction: column;
     justify-content: center;
+    align-items: center;
+    padding: 4px 8px;
 }
-.score-card .player-name {
-    font-size: 11px;
-    font-weight: bold;
-    margin-bottom: 0;
-    line-height: 1.2;
-}
-.score-card .player-name.human { color: #ff6b6b; }
-.score-card .player-name.ai { color: #4ecdc4; }
 .score-card .score-value {
     font-size: 28px;
     font-weight: bold;
@@ -286,16 +304,20 @@ canvas {
     <div class="score-area">
         <div class="score-panel" id="scorePanel">
             <div class="score-card">
-                <div class="player-name human">● 人類</div>
-                <div class="score-value human" id="humanScore">0</div>
-                <div class="score-label">分</div>
-                <div class="result-text" id="humanResult"></div>
+                <div class="card-banner human-banner">人<br>類</div>
+                <div class="card-content">
+                    <div class="score-value human" id="humanScore">0</div>
+                    <div class="score-label">分</div>
+                    <div class="result-text" id="humanResult"></div>
+                </div>
             </div>
             <div class="score-card">
-                <div class="player-name ai">● AI</div>
-                <div class="score-value ai" id="aiScore">0</div>
-                <div class="score-label">分</div>
-                <div class="result-text" id="aiResult"></div>
+                <div class="card-banner ai-banner">電<br>腦</div>
+                <div class="card-content">
+                    <div class="score-value ai" id="aiScore">0</div>
+                    <div class="score-label">分</div>
+                    <div class="result-text" id="aiResult"></div>
+                </div>
             </div>
         </div>
         <div class="zoom-stack">
@@ -1497,11 +1519,11 @@ function showGameOver() {
         // Human wins
         humanResult.textContent = '贏 😊';
         humanResult.className = 'result-text show win';
-        aiResult.textContent = '輸 😢';
+        aiResult.textContent = '輸 🙁';
         aiResult.className = 'result-text show loss';
     } else if (aiScore > humanScore) {
         // AI wins
-        humanResult.textContent = '輸 😢';
+        humanResult.textContent = '輸 🙁';
         humanResult.className = 'result-text show loss';
         aiResult.textContent = '贏 😊';
         aiResult.className = 'result-text show win';
