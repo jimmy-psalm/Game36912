@@ -874,14 +874,14 @@ public class GamePanel extends JPanel {
         
         // Update score labels to show result
         if (winner == GameBoard.HUMAN) {
-            humanScoreLabel.setText("<html>人类: " + hScore + " 分<br><span style='color:#2ecc71;font-size:28px;font-weight:bold;'>Win!</span></html>");
-            aiScoreLabel.setText("<html>AI: " + aScore + " 分<br><span style='color:#e74c3c;font-size:28px;font-weight:bold;'>Loss</span></html>");
+            humanScoreLabel.setText("<html>人类: " + hScore + " 分<br><span style='color:#2ecc71;font-size:28px;font-weight:bold;'>赢 😊</span></html>");
+            aiScoreLabel.setText("<html>AI: " + aScore + " 分<br><span style='color:#e74c3c;font-size:28px;font-weight:bold;'>输 😢</span></html>");
         } else if (winner == GameBoard.AI) {
-            humanScoreLabel.setText("<html>人类: " + hScore + " 分<br><span style='color:#e74c3c;font-size:28px;font-weight:bold;'>Loss</span></html>");
-            aiScoreLabel.setText("<html>AI: " + aScore + " 分<br><span style='color:#2ecc71;font-size:28px;font-weight:bold;'>Win!</span></html>");
+            humanScoreLabel.setText("<html>人类: " + hScore + " 分<br><span style='color:#e74c3c;font-size:28px;font-weight:bold;'>输 😢</span></html>");
+            aiScoreLabel.setText("<html>AI: " + aScore + " 分<br><span style='color:#2ecc71;font-size:28px;font-weight:bold;'>赢 😊</span></html>");
         } else {
-            humanScoreLabel.setText("<html>人类: " + hScore + " 分<br><span style='color:#f39c12;font-size:28px;font-weight:bold;'>Draw</span></html>");
-            aiScoreLabel.setText("<html>AI: " + aScore + " 分<br><span style='color:#f39c12;font-size:28px;font-weight:bold;'>Draw</span></html>");
+            humanScoreLabel.setText("<html>人类: " + hScore + " 分<br><span style='color:#f39c12;font-size:28px;font-weight:bold;'>平局</span></html>");
+            aiScoreLabel.setText("<html>AI: " + aScore + " 分<br><span style='color:#f39c12;font-size:28px;font-weight:bold;'>平局</span></html>");
         }
     }
 

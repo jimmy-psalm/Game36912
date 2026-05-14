@@ -1495,21 +1495,21 @@ function showGameOver() {
     
     if (humanScore > aiScore) {
         // Human wins
-        humanResult.textContent = 'Win!';
+        humanResult.textContent = '贏 😊';
         humanResult.className = 'result-text show win';
-        aiResult.textContent = 'Loss';
+        aiResult.textContent = '輸 😢';
         aiResult.className = 'result-text show loss';
     } else if (aiScore > humanScore) {
         // AI wins
-        humanResult.textContent = 'Loss';
+        humanResult.textContent = '輸 😢';
         humanResult.className = 'result-text show loss';
-        aiResult.textContent = 'Win!';
+        aiResult.textContent = '贏 😊';
         aiResult.className = 'result-text show win';
     } else {
         // Draw
-        humanResult.textContent = 'Draw';
+        humanResult.textContent = '平局';
         humanResult.className = 'result-text show draw';
-        aiResult.textContent = 'Draw';
+        aiResult.textContent = '平局';
         aiResult.className = 'result-text show draw';
     }
 }
