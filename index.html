@@ -1344,33 +1344,46 @@ function flashStepButton(btn) {
     }, 500);
 }
 
-backBtn.addEventListener('click', goBack);
-forwardBtn.addEventListener('click', goForward);
-
 // ---- Long press for repeat action (backward/forward) ----
+// Replace click with mousedown/mouseup for reliable repeat
 function setupLongPress(btn, action) {
     let timer = null;
     let interval = null;
+    let isLongPress = false;
     
     function startRepeat(e) {
         e.preventDefault();
+        isLongPress = false;
         action();
         timer = setTimeout(() => {
+            isLongPress = true;
             interval = setInterval(action, 150);
         }, 300);
     }
     
-    function stopRepeat() {
+    function stopRepeat(e) {
+        e.preventDefault();
         if (timer) { clearTimeout(timer); timer = null; }
         if (interval) { clearInterval(interval); interval = null; }
+    }
+    
+    function onClick(e) {
+        if (isLongPress) {
+            e.preventDefault();
+            e.stopPropagation();
+            isLongPress = false;
+        }
     }
     
     btn.addEventListener('mousedown', startRepeat);
     btn.addEventListener('mouseup', stopRepeat);
     btn.addEventListener('mouseleave', stopRepeat);
+    btn.addEventListener('click', onClick);
     btn.addEventListener('dragstart', (e) => e.preventDefault());
 }
 
+// Remove old click listeners, use long press instead
+// backBtn & forwardBtn no longer use click events
 setupLongPress(backBtn, goBack);
 setupLongPress(forwardBtn, goForward);
 
