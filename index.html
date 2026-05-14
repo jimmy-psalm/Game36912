@@ -1279,7 +1279,6 @@ function goBack() {
     updateUI();
     updateTurnIndicator();
     setStatus('✅ 已後退到第 ' + moveNumber + ' 步，輪到人類');
-    autoCopyHistory();
 }
 
 function goForward() {
@@ -1335,7 +1334,6 @@ function goForward() {
     updateUI();
     updateTurnIndicator();
     setStatus('✅ 已前進到第 ' + moveNumber + ' 步，輪到人類');
-    autoCopyHistory();
 }
 
 function flashStepButton(btn) {
