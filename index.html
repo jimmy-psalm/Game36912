@@ -91,14 +91,31 @@ canvas {
     font-size: 28px;
     font-weight: bold;
     line-height: 1.1;
+    transition: font-size 0.3s;
 }
 .score-card .score-value.human { color: #ff6b6b; }
 .score-card .score-value.ai { color: #4ecdc4; }
+.score-card .score-value.small {
+    font-size: 14px;
+}
 .score-card .score-label {
     font-size: 10px;
     color: #8a7a6a;
     line-height: 1;
 }
+.score-card .result-text {
+    display: none;
+    font-size: 28px;
+    font-weight: bold;
+    line-height: 1.1;
+    margin-top: 2px;
+}
+.score-card .result-text.show {
+    display: block;
+}
+.score-card .result-text.win { color: #2ecc71; }
+.score-card .result-text.loss { color: #e74c3c; }
+.score-card .result-text.draw { color: #f39c12; }
 .zoom-stack {
     display: flex;
     flex-direction: column;
@@ -272,11 +289,13 @@ canvas {
                 <div class="player-name human">● 人類</div>
                 <div class="score-value human" id="humanScore">0</div>
                 <div class="score-label">分</div>
+                <div class="result-text" id="humanResult"></div>
             </div>
             <div class="score-card">
                 <div class="player-name ai">● AI</div>
                 <div class="score-value ai" id="aiScore">0</div>
                 <div class="score-label">分</div>
+                <div class="result-text" id="aiResult"></div>
             </div>
         </div>
         <div class="zoom-stack">
@@ -1328,6 +1347,17 @@ function resetGame() {
     moveNumber = 0;
     snapshots = [];
     forwardSnapshots = [];
+    
+    // Clear result display
+    const humanResult = document.getElementById('humanResult');
+    const aiResult = document.getElementById('aiResult');
+    const humanScoreEl = document.getElementById('humanScore');
+    const aiScoreEl = document.getElementById('aiScore');
+    humanResult.className = 'result-text';
+    aiResult.className = 'result-text';
+    humanScoreEl.classList.remove('small');
+    aiScoreEl.classList.remove('small');
+    
     updateUI();
     updateTurnIndicator();
     setStatus('人類先手 (珊瑚紅) — 請點擊棋盤下子');
@@ -1450,17 +1480,38 @@ function doAIMove() {
 
 // ---- Game over ----
 function showGameOver() {
-    let message;
-    if (humanScore > aiScore) {
-        message = '🎉 人類獲勝！\n\n人類: ' + humanScore + ' 分\nAI: ' + aiScore + ' 分';
-    } else if (aiScore > humanScore) {
-        message = '🤖 AI 獲勝！\n\n人類: ' + humanScore + ' 分\nAI: ' + aiScore + ' 分';
-    } else {
-        message = '🤝 平局！\n\n雙方: ' + humanScore + ' 分';
-    }
     setStatus('遊戲結束！');
     updateTurnIndicator();
-    alert(message);
+    
+    // Display result in score area instead of alert
+    const humanResult = document.getElementById('humanResult');
+    const aiResult = document.getElementById('aiResult');
+    const humanScoreEl = document.getElementById('humanScore');
+    const aiScoreEl = document.getElementById('aiScore');
+    
+    // Make score values smaller
+    humanScoreEl.classList.add('small');
+    aiScoreEl.classList.add('small');
+    
+    if (humanScore > aiScore) {
+        // Human wins
+        humanResult.textContent = 'Win!';
+        humanResult.className = 'result-text show win';
+        aiResult.textContent = 'Loss';
+        aiResult.className = 'result-text show loss';
+    } else if (aiScore > humanScore) {
+        // AI wins
+        humanResult.textContent = 'Loss';
+        humanResult.className = 'result-text show loss';
+        aiResult.textContent = 'Win!';
+        aiResult.className = 'result-text show win';
+    } else {
+        // Draw
+        humanResult.textContent = 'Draw';
+        humanResult.className = 'result-text show draw';
+        aiResult.textContent = 'Draw';
+        aiResult.className = 'result-text show draw';
+    }
 }
 
 // ---- Init ----

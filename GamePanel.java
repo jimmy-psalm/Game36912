@@ -863,24 +863,26 @@ public class GamePanel extends JPanel {
     }
 
     /**
-     * Show game over dialog
+     * Show game over - display Win/Loss in score area instead of popup
      */
     private void showGameOver() {
-        int winner = engine.getWinner();
-        String message;
-        if (winner == GameBoard.HUMAN) {
-            message = "🎉 人类获胜！\n\n人类: " + engine.getHumanScore() + " 分\nAI: " + engine.getAiScore() + " 分";
-        } else if (winner == GameBoard.AI) {
-            message = "🤖 AI 获胜！\n\n人类: " + engine.getHumanScore() + " 分\nAI: " + engine.getAiScore() + " 分";
-        } else {
-            message = "🤝 平局！\n\n双方: " + engine.getHumanScore() + " 分";
-        }
-
         statusLabel.setText("游戏结束！");
-
-        SwingUtilities.invokeLater(() -> {
-            JOptionPane.showMessageDialog(parentFrame, message, "游戏结束", JOptionPane.INFORMATION_MESSAGE);
-        });
+        
+        int winner = engine.getWinner();
+        int hScore = engine.getHumanScore();
+        int aScore = engine.getAiScore();
+        
+        // Update score labels to show result
+        if (winner == GameBoard.HUMAN) {
+            humanScoreLabel.setText("<html>人类: " + hScore + " 分<br><span style='color:#2ecc71;font-size:28px;font-weight:bold;'>Win!</span></html>");
+            aiScoreLabel.setText("<html>AI: " + aScore + " 分<br><span style='color:#e74c3c;font-size:28px;font-weight:bold;'>Loss</span></html>");
+        } else if (winner == GameBoard.AI) {
+            humanScoreLabel.setText("<html>人类: " + hScore + " 分<br><span style='color:#e74c3c;font-size:28px;font-weight:bold;'>Loss</span></html>");
+            aiScoreLabel.setText("<html>AI: " + aScore + " 分<br><span style='color:#2ecc71;font-size:28px;font-weight:bold;'>Win!</span></html>");
+        } else {
+            humanScoreLabel.setText("<html>人类: " + hScore + " 分<br><span style='color:#f39c12;font-size:28px;font-weight:bold;'>Draw</span></html>");
+            aiScoreLabel.setText("<html>AI: " + aScore + " 分<br><span style='color:#f39c12;font-size:28px;font-weight:bold;'>Draw</span></html>");
+        }
     }
 
     /**
