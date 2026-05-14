@@ -1347,6 +1347,33 @@ function flashStepButton(btn) {
 backBtn.addEventListener('click', goBack);
 forwardBtn.addEventListener('click', goForward);
 
+// ---- Long press for repeat action (backward/forward) ----
+function setupLongPress(btn, action) {
+    let timer = null;
+    let interval = null;
+    
+    function startRepeat(e) {
+        e.preventDefault();
+        action();
+        timer = setTimeout(() => {
+            interval = setInterval(action, 150);
+        }, 300);
+    }
+    
+    function stopRepeat() {
+        if (timer) { clearTimeout(timer); timer = null; }
+        if (interval) { clearInterval(interval); interval = null; }
+    }
+    
+    btn.addEventListener('mousedown', startRepeat);
+    btn.addEventListener('mouseup', stopRepeat);
+    btn.addEventListener('mouseleave', stopRepeat);
+    btn.addEventListener('dragstart', (e) => e.preventDefault());
+}
+
+setupLongPress(backBtn, goBack);
+setupLongPress(forwardBtn, goForward);
+
 // ---- Reset ----
 document.getElementById('resetBtn').addEventListener('click', resetGame);
 
